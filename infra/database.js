@@ -39,6 +39,7 @@ async function getNewClient() {
     password: process.env.POSTGRES_PASSWORD,
     ssl: getSSLValues(),
   });
+  console.log(getSSLValues());
   await client.connect();
   return client;
 }
