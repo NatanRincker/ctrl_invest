@@ -6,7 +6,7 @@ beforeAll(async () => {
 });
 
 describe("GET to /api/v1/migrations", () => {
-  describe("Anonymous User Running pending migrations", () => {
+  describe("Anonymous User Retrieving pending migrations", () => {
     test("should return 200", async () => {
       const response = await fetch("http://localhost:3000/api/v1/migrations");
       expect(response.status).toBe(200);
