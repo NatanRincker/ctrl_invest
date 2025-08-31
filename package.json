@@ -21,7 +21,8 @@
     "lint:prettier:fix": "prettier --write .",
     "lint:eslint:check": "next lint --dir .",
     "get:api:v1:status": "curl -s http://localhost:3000/api/v1/status | jq",
-    "post:api:v1:status": "curl -s -X POST http://localhost:3000/api/v1/status | jq"
+    "post:api:v1:status": "curl -s -X POST http://localhost:3000/api/v1/status | jq",
+    "get:api:v1:migrations": "curl -s http://localhost:3000/api/v1/migrations | jq"
   },
   "author": "",
   "license": "MIT",
