@@ -10,20 +10,11 @@ beforeAll(async () => {
 describe("POST to /api/v1/users", () => {
   describe("Anonymous User", () => {
     test("With Empty data", async () => {
-      const emptyUserResponse = await fetch(
-        "http://localhost:3000/api/v1/users",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name: "",
-            email: "teste1@teste.com",
-            password: "teste123",
-          }),
-        },
-      );
+      const emptyUserResponse = await postCreateUserRequest({
+        name: "",
+        email: "teste1@teste.com",
+        password: "teste123",
+      });
       expect(emptyUserResponse.status).toBe(400);
 
       const responseBody = await emptyUserResponse.json();
@@ -35,20 +26,11 @@ describe("POST to /api/v1/users", () => {
       });
     });
     test("With Null data", async () => {
-      const nullUserResponse = await fetch(
-        "http://localhost:3000/api/v1/users",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name: null,
-            email: null,
-            password: "teste123",
-          }),
-        },
-      );
+      const nullUserResponse = await postCreateUserRequest({
+        name: null,
+        email: null,
+        password: "teste123",
+      });
       expect(nullUserResponse.status).toBe(400);
 
       const responseBody = await nullUserResponse.json();
@@ -60,16 +42,10 @@ describe("POST to /api/v1/users", () => {
       });
     });
     test("with unique and valid data", async () => {
-      const response = await fetch("http://localhost:3000/api/v1/users", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: "teste1",
-          email: "teste1@teste.com",
-          password: "teste123",
-        }),
+      const response = await postCreateUserRequest({
+        name: "teste1",
+        email: "teste1@teste.com",
+        password: "teste123",
       });
       expect(response.status).toBe(201);
 
@@ -88,17 +64,12 @@ describe("POST to /api/v1/users", () => {
       expect(Date.parse(responseBody.updated_date)).not.toBeNaN();
     });
     test("with duplicated email", async () => {
-      const response = await fetch("http://localhost:3000/api/v1/users", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: "Duplicated User",
-          email: "Teste1@teste.com",
-          password: "teste123",
-        }),
+      const response = await postCreateUserRequest({
+        name: "Duplicated User",
+        email: "Teste1@teste.com",
+        password: "teste123",
       });
+
       expect(response.status).toBe(400);
 
       const responseBody = await response.json();
@@ -111,3 +82,17 @@ describe("POST to /api/v1/users", () => {
     });
   });
 });
+
+async function postCreateUserRequest(userProps) {
+  return await fetch("http://localhost:3000/api/v1/users", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      name: userProps.name,
+      email: userProps.email,
+      password: userProps.password,
+    }),
+  });
+}
