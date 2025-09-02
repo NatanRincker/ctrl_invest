@@ -5,9 +5,8 @@ exports.up = (pgm) => {
       primaryKey: true,
       default: pgm.func("gen_random_uuid()"),
     },
-    //For reference: Github limits usernames to 39 characters
     name: {
-      type: "varchar(100)",
+      type: "varchar(200)",
       notNull: true,
     },
     email: {
@@ -24,10 +23,12 @@ exports.up = (pgm) => {
     created_date: {
       type: "timestamptz",
       default: pgm.func("now()"),
+      notNull: true,
     },
     updated_date: {
       type: "timestamptz",
       default: pgm.func("now()"),
+      notNull: true,
     },
   });
 };

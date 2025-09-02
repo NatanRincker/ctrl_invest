@@ -11,7 +11,6 @@ export default router.handler(controller.errorHandlers);
 async function postHandler(request, response) {
   const userInputValues = request.body;
   const newUser = await user.create(userInputValues);
-  console.log(newUser);
   let statusCode = 201;
 
   return response.status(statusCode).json(newUser);
