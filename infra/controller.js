@@ -2,6 +2,7 @@ import {
   InternalServerError,
   MethodNotAllowedError,
   ValidationError,
+  NotFoundError,
 } from "infra/errors";
 
 function onNoMatchHandler(request, response) {
@@ -13,6 +14,8 @@ function onErrorHandler(error, request, response) {
   if (error instanceof MethodNotAllowedError) {
     return response.status(error.statusCode).json(error);
   } else if (error instanceof ValidationError) {
+    return response.status(error.statusCode).json(error);
+  } else if (error instanceof NotFoundError) {
     return response.status(error.statusCode).json(error);
   }
   const publicErrorObject = new InternalServerError({

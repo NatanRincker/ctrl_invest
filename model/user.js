@@ -1,5 +1,5 @@
 import database from "infra/database.js";
-import { ValidationError } from "infra/errors.js";
+import { ValidationError, NotFoundError } from "infra/errors.js";
 
 async function create(userInputValues) {
   assertNoNullOrEmpty(userInputValues);
@@ -45,6 +45,29 @@ async function create(userInputValues) {
   }
 }
 
+async function findUserDataByEmail(email) {
+  return await runSelectQuery(email);
+
+  async function runSelectQuery(email) {
+    const result = await database.query({
+      text: `
+          SELECT *
+          FROM users
+          WHERE
+            lower(email) = lower($1)
+          LIMIT 1;`,
+      values: [email],
+    });
+    if (result.rowCount === 0) {
+      throw new NotFoundError({
+        message: "User Not Found",
+        action: "Please, check if the E-mail is correct",
+      });
+    }
+    return result.rows[0];
+  }
+}
+
 function assertNoNullOrEmpty(obj) {
   if (obj == null || typeof obj !== "object") {
     throw new TypeError("Expected an object");
@@ -64,6 +87,6 @@ function assertNoNullOrEmpty(obj) {
 
 const user = {
   create,
+  findUserDataByEmail,
 };
-
 export default user;
