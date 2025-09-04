@@ -14,20 +14,20 @@ exports.up = (pgm) => {
       notNull: true,
       unique: true,
     },
-    // why 72? Maximun length bcrypt allows
+    // why 60? bcrypt hash's length
     password: {
-      type: "varchar(72)",
+      type: "varchar(60)",
       notNull: true,
     },
     // timestamp with UTC timezone
     created_date: {
       type: "timestamptz",
-      default: pgm.func("now()"),
+      default: pgm.func("timezone('utc', now())"),
       notNull: true,
     },
     updated_date: {
       type: "timestamptz",
-      default: pgm.func("now()"),
+      default: pgm.func("timezone('utc', now())"),
       notNull: true,
     },
   });
