@@ -10,24 +10,6 @@ async function create(userInputValues) {
   const newUser = await runInsertQuery(userInputValues);
   return newUser;
 
-  async function validateUniqueEmail(email) {
-    const result = await database.query({
-      text: `
-        SELECT email
-        FROM users
-        WHERE
-          lower(email) = lower($1)
-        LIMIT 1;`,
-      values: [email],
-    });
-    if (result.rowCount > 0) {
-      throw new ValidationError({
-        message: "E-mail not Allowed",
-        action: "Use a different email address",
-      });
-    }
-  }
-
   async function runInsertQuery(userInputValues) {
     const result = await database.query({
       text: `
@@ -71,6 +53,50 @@ async function findUserDataByEmail(email) {
   }
 }
 
+async function update(email, updatedValues) {
+  const currentUser = await findUserDataByEmail(email);
+
+  if ("email" in updatedValues) {
+    const isSendingSameEmail =
+      currentUser.email.toLowerCase() === updatedValues.email.toLowerCase();
+    if (!isSendingSameEmail) {
+      await validateUniqueEmail(updatedValues.email);
+    }
+  }
+  if ("password" in updatedValues) {
+    await hashPasswordInObject(updatedValues);
+  }
+
+  const userWithUpdatedValues = { ...currentUser, ...updatedValues };
+  const updateUser = await runUpdateQuery(userWithUpdatedValues);
+  return updateUser;
+}
+
+async function runUpdateQuery(userWithUpdatedValues) {
+  const result = await database.query({
+    text: `
+        UPDATE
+          users
+        SET
+          name = $2,
+          email = $3,
+          password = $4,
+          updated_date = TIMEZONE('utc', NOW())
+        WHERE
+          id = $1
+        RETURNING
+          *
+        ;`,
+    values: [
+      userWithUpdatedValues.id,
+      userWithUpdatedValues.name,
+      userWithUpdatedValues.email,
+      userWithUpdatedValues.password,
+    ],
+  });
+  return result.rows[0];
+}
+
 async function hashPasswordInObject(userInputValues) {
   const hashedPassword = await await password.hash(userInputValues.password);
   userInputValues.password = hashedPassword;
@@ -92,9 +118,27 @@ function assertNoNullOrEmpty(obj) {
     });
   }
 }
+async function validateUniqueEmail(email) {
+  const result = await database.query({
+    text: `
+      SELECT email
+      FROM users
+      WHERE
+        lower(email) = lower($1)
+      LIMIT 1;`,
+    values: [email],
+  });
+  if (result.rowCount > 0) {
+    throw new ValidationError({
+      message: "E-mail not Allowed",
+      action: "Use a different email address",
+    });
+  }
+}
 
 const user = {
   create,
   findUserDataByEmail,
+  update,
 };
 export default user;
