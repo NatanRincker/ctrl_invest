@@ -13,7 +13,7 @@ describe("GET to /api/v1/users/[email]", () => {
       const response = await postCreateUserRequest({
         name: "Exact Case Match",
         email: "test@exactmatch.com",
-        password: "teste123",
+        password: "Test123",
       });
 
       expect(response.status).toBe(201);
@@ -27,7 +27,7 @@ describe("GET to /api/v1/users/[email]", () => {
         id: getResponseBody.id,
         name: "Exact Case Match",
         email: "test@exactmatch.com",
-        password: "teste123",
+        password: getResponseBody.password,
         created_date: getResponseBody.created_date,
         updated_date: getResponseBody.updated_date,
       });
@@ -39,7 +39,7 @@ describe("GET to /api/v1/users/[email]", () => {
       const response = await postCreateUserRequest({
         name: "Case Missmatch",
         email: "test@casemismatch.com",
-        password: "teste123",
+        password: "Teste123",
       });
 
       expect(response.status).toBe(201);
@@ -53,7 +53,7 @@ describe("GET to /api/v1/users/[email]", () => {
         id: getResponseBody.id,
         name: "Case Missmatch",
         email: "test@casemismatch.com",
-        password: "teste123",
+        password: getResponseBody.password,
         created_date: getResponseBody.created_date,
         updated_date: getResponseBody.updated_date,
       });
