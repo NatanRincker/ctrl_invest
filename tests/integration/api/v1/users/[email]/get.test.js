@@ -10,13 +10,11 @@ beforeAll(async () => {
 describe("GET to /api/v1/users/[email]", () => {
   describe("Anonymous User", () => {
     test("with exact case match", async () => {
-      const response = await postCreateUserRequest({
+      await orchestrator.createUser({
         name: "Exact Case Match",
         email: "test@exactmatch.com",
         password: "Test123",
       });
-
-      expect(response.status).toBe(201);
 
       const getResponse = await getUserRequest("test@exactmatch.com");
 
@@ -36,13 +34,11 @@ describe("GET to /api/v1/users/[email]", () => {
       expect(Date.parse(getResponseBody.updated_date)).not.toBeNaN();
     });
     test("with case mismatch", async () => {
-      const response = await postCreateUserRequest({
+      await orchestrator.createUser({
         name: "Case Missmatch",
         email: "test@casemismatch.com",
         password: "Teste123",
       });
-
-      expect(response.status).toBe(201);
 
       const getResponse = await getUserRequest("Test@CaseMismatch.com");
 
@@ -79,18 +75,4 @@ describe("GET to /api/v1/users/[email]", () => {
 
 async function getUserRequest(email) {
   return await fetch(`http://localhost:3000/api/v1/users/${email}`);
-}
-
-async function postCreateUserRequest(userProps) {
-  return await fetch("http://localhost:3000/api/v1/users", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      name: userProps.name,
-      email: userProps.email,
-      password: userProps.password,
-    }),
-  });
 }

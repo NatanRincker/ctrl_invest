@@ -12,19 +12,13 @@ beforeAll(async () => {
 describe("PATCH to /api/v1/users/[email]", () => {
   describe("Anonymous User", () => {
     test("with duplicated email", async () => {
-      const user1Response = await postCreateUserRequest({
-        name: "Original Email",
+      await orchestrator.createUser({
         email: "Teste1@original.com",
-        password: "teste123",
       });
-      expect(user1Response.status).toBe(201);
 
-      const user2Response = await postCreateUserRequest({
-        name: "Second Email",
+      await orchestrator.createUser({
         email: "Teste1@second.com",
-        password: "teste123",
       });
-      expect(user2Response.status).toBe(201);
 
       const patchResponse = await patchUserRequest("Teste1@second.com", {
         email: "Teste1@original.com",
@@ -39,12 +33,9 @@ describe("PATCH to /api/v1/users/[email]", () => {
       });
     });
     test("with unique email", async () => {
-      const user1Response = await postCreateUserRequest({
-        name: "Unique Email",
+      await orchestrator.createUser({
         email: "Teste1@unique.com",
-        password: "teste123",
       });
-      expect(user1Response.status).toBe(201);
 
       const patchResponse = await patchUserRequest("teste1@unique.com", {
         email: "another@unique.com",
@@ -55,7 +46,7 @@ describe("PATCH to /api/v1/users/[email]", () => {
 
       expect(patchResponseBody).toEqual({
         id: patchResponseBody.id,
-        name: "Unique Email",
+        name: patchResponseBody.name,
         email: "another@unique.com",
         password: patchResponseBody.password,
         created_date: patchResponseBody.created_date,
@@ -69,14 +60,11 @@ describe("PATCH to /api/v1/users/[email]", () => {
       ).toBe(true);
     });
     test("with changing Name", async () => {
-      const user1Response = await postCreateUserRequest({
+      const nameChangeTest = await orchestrator.createUser({
         name: "Just A. Name",
-        email: "changing_name@test.com",
-        password: "teste123",
       });
-      expect(user1Response.status).toBe(201);
 
-      const patchResponse = await patchUserRequest("changing_name@test.com", {
+      const patchResponse = await patchUserRequest(nameChangeTest.email, {
         name: "Another Name",
       });
       expect(patchResponse.status).toBe(200);
@@ -86,7 +74,7 @@ describe("PATCH to /api/v1/users/[email]", () => {
       expect(patchResponseBody).toEqual({
         id: patchResponseBody.id,
         name: "Another Name",
-        email: "changing_name@test.com",
+        email: nameChangeTest.email,
         password: patchResponseBody.password,
         created_date: patchResponseBody.created_date,
         updated_date: patchResponseBody.updated_date,
@@ -99,14 +87,12 @@ describe("PATCH to /api/v1/users/[email]", () => {
       ).toBe(true);
     });
     test("with new Password", async () => {
-      const user1Response = await postCreateUserRequest({
-        name: "Password Update",
-        email: "password_update@test.com",
+      const newPasswordTest = await orchestrator.createUser({
         password: "OriginalPassword",
       });
-      expect(user1Response.status).toBe(201);
+      console.log(newPasswordTest);
 
-      const patchResponse = await patchUserRequest("changing_name@test.com", {
+      const patchResponse = await patchUserRequest(newPasswordTest.email, {
         password: "NewPassword",
       });
       expect(patchResponse.status).toBe(200);
@@ -115,8 +101,8 @@ describe("PATCH to /api/v1/users/[email]", () => {
 
       expect(patchResponseBody).toEqual({
         id: patchResponseBody.id,
-        name: "Another Name",
-        email: "changing_name@test.com",
+        name: newPasswordTest.name,
+        email: newPasswordTest.email,
         password: patchResponseBody.password,
         created_date: patchResponseBody.created_date,
         updated_date: patchResponseBody.updated_date,
@@ -129,7 +115,7 @@ describe("PATCH to /api/v1/users/[email]", () => {
       ).toBe(true);
 
       const userFromDatabase = await user.findUserDataByEmail(
-        "changing_name@test.com",
+        newPasswordTest.email,
       );
       const passwordMatch = await password.compare(
         "NewPassword",
@@ -154,19 +140,5 @@ async function patchUserRequest(currentEmail, userProps) {
     },
 
     body: JSON.stringify({ ...userProps }),
-  });
-}
-
-async function postCreateUserRequest(userProps) {
-  return await fetch("http://localhost:3000/api/v1/users", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      name: userProps.name,
-      email: userProps.email,
-      password: userProps.password,
-    }),
   });
 }
