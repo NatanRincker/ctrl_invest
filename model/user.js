@@ -53,6 +53,29 @@ async function findUserDataByEmail(email) {
   }
 }
 
+async function findOneById(userId) {
+  return await runSelectQuery(userId);
+
+  async function runSelectQuery(userId) {
+    const result = await database.query({
+      text: `
+          SELECT *
+          FROM users
+          WHERE
+            id= $1
+          LIMIT 1;`,
+      values: [userId],
+    });
+    if (result.rowCount === 0) {
+      throw new NotFoundError({
+        message: "User Not Found",
+        action: "Please, review uuid",
+      });
+    }
+    return result.rows[0];
+  }
+}
+
 async function update(email, updatedValues) {
   const currentUser = await findUserDataByEmail(email);
 
@@ -138,7 +161,8 @@ async function validateUniqueEmail(email) {
 
 const user = {
   create,
-  findUserDataByEmail,
   update,
+  findUserDataByEmail,
+  findOneById,
 };
 export default user;
