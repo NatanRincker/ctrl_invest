@@ -19,6 +19,7 @@ async function postHandler(request, response) {
   const newSession = await session.create(authenticatedUser.id);
   let statusCode = 201;
   controller.setSessionCookie(newSession.token, response);
+  controller.setNoCacheSession(response);
 
   return response.status(statusCode).json(newSession);
 }
