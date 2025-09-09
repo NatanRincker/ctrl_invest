@@ -95,3 +95,23 @@ export class NotFoundError extends Error {
     };
   }
 }
+
+export class UnauthorizedError extends Error {
+  constructor({ cause, message, action }) {
+    super(message || "You do not have authorization to access this resource", {
+      cause,
+    });
+    this.name = "UnauthorizedError";
+    this.action = action || "Please contact support about this error";
+    this.statusCode = 401;
+  }
+
+  toJSON() {
+    return {
+      name: this.name,
+      message: this.message,
+      action: this.action,
+      status_code: this.statusCode,
+    };
+  }
+}
