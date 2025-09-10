@@ -56,10 +56,53 @@ describe("GET to /api/v1/user", () => {
       const parsedSetCookie = setCookieParser(response, {
         map: true,
       });
-      console.log(parsedSetCookie);
       expect(parsedSetCookie.session_id).toEqual({
         name: "session_id",
         value: renewedSessionObject.token,
+        maxAge: session.TIMEOUT_IN_MILISECONDS / 1000,
+        path: "/",
+        httpOnly: true,
+      });
+    });
+    test("With halfway-expired session", async () => {
+      jest.useFakeTimers({
+        now: new Date(Date.now() - session.TIMEOUT_IN_MILISECONDS / 2),
+      });
+      const createdUser = await orchestrator.createUser({});
+      const sessionObject = await orchestrator.createSession(createdUser.id);
+      jest.useRealTimers();
+      const response = await getUserRequest(sessionObject);
+      expect(response.status).toBe(200);
+
+      const responseBody = await response.json();
+      expect(responseBody).toEqual({
+        id: createdUser.id,
+        name: createdUser.name,
+        email: createdUser.email,
+        password: createdUser.password,
+        created_date: createdUser.created_date.toISOString(),
+        updated_date: createdUser.updated_date.toISOString(),
+      });
+      expect(uuidVersion(responseBody.id)).toBe(4);
+      expect(Date.parse(responseBody.created_date)).not.toBeNaN();
+      expect(Date.parse(responseBody.updated_date)).not.toBeNaN();
+      // Session renewal assertions
+      const renewedSessionObject = await session.findOneValidByToken(
+        sessionObject.token,
+      );
+      expect(
+        renewedSessionObject.expire_date > sessionObject.expire_date,
+      ).toEqual(true);
+      expect(
+        renewedSessionObject.updated_date > sessionObject.updated_date,
+      ).toEqual(true);
+      // Set‑Cookie assertions
+      const parsedSetCookie = setCookieParser(response, {
+        map: true,
+      });
+      expect(parsedSetCookie.session_id).toEqual({
+        name: "session_id",
+        value: sessionObject.token,
         maxAge: session.TIMEOUT_IN_MILISECONDS / 1000,
         path: "/",
         httpOnly: true,
@@ -81,6 +124,19 @@ describe("GET to /api/v1/user", () => {
         action: "Please, review session information",
         status_code: 401,
       });
+
+      // Set-Cookie assertions
+      const parsedSetCookie = setCookieParser(response, {
+        map: true,
+      });
+
+      expect(parsedSetCookie.session_id).toEqual({
+        name: "session_id",
+        value: "invalid",
+        maxAge: -1,
+        path: "/",
+        httpOnly: true,
+      });
     });
     test("with existing, but expired, session", async () => {
       jest.useFakeTimers({
@@ -101,6 +157,17 @@ describe("GET to /api/v1/user", () => {
         message: "Unable to Find a Valid Session",
         action: "Please, review session information",
         status_code: 401,
+      });
+      // Set-Cookie assertions
+      const parsedSetCookie = setCookieParser(response, {
+        map: true,
+      });
+      expect(parsedSetCookie.session_id).toEqual({
+        name: "session_id",
+        value: "invalid",
+        maxAge: -1,
+        path: "/",
+        httpOnly: true,
       });
     });
   });
