@@ -15,13 +15,15 @@ function onNoMatchHandler(request, response) {
 
 function onErrorHandler(error, request, response) {
   console.error(error);
-  console.log("---- Passou no infra/controller ----");
   if (
     error instanceof MethodNotAllowedError ||
     error instanceof ValidationError ||
-    error instanceof NotFoundError ||
-    error instanceof UnauthorizedError
+    error instanceof NotFoundError
   ) {
+    return response.status(error.statusCode).json(error);
+  }
+  if (error instanceof UnauthorizedError) {
+    clearSessionCookie(response);
     return response.status(error.statusCode).json(error);
   }
   const publicErrorObject = new InternalServerError({
