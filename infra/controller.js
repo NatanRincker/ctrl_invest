@@ -15,6 +15,7 @@ function onNoMatchHandler(request, response) {
 
 function onErrorHandler(error, request, response) {
   console.error(error);
+  console.log("---- Passou no infra/controller ----");
   if (
     error instanceof MethodNotAllowedError ||
     error instanceof ValidationError ||
@@ -39,6 +40,17 @@ function setSessionCookie(sessionToken, response) {
   });
   response.setHeader("Set-Cookie", setCookie);
 }
+
+function clearSessionCookie(response) {
+  const setCookie = cookie.serialize("session_id", "invalid", {
+    path: "/",
+    maxAge: -1,
+    secure: process.env.NODE_ENV === "production",
+    httpOnly: true,
+  });
+  response.setHeader("Set-Cookie", setCookie);
+}
+
 function setNoCacheSession(response) {
   response.setHeader(
     "Cache-Control",
@@ -52,5 +64,6 @@ const controller = {
   },
   setSessionCookie,
   setNoCacheSession,
+  clearSessionCookie,
 };
 export default controller;

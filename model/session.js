@@ -44,7 +44,7 @@ async function findOneValidByToken(token) {
   if (result.rowCount === 0) {
     throw new UnauthorizedError({
       message: "Unable to Find a Valid Session",
-      action: "Please, log in again",
+      action: "Please, review session information",
     });
   }
   return result.rows[0];
@@ -69,11 +69,33 @@ async function renew(sessionId) {
   return result.rows[0];
 }
 
+async function expireById(sessionId) {
+  return await runUpdateQuery(sessionId);
+  async function runUpdateQuery(sessionId) {
+    const result = await database.query({
+      text: `
+          UPDATE
+            sessions
+          SET
+            expire_date = expire_date - interval '1 year',
+            updated_date = TIMEZONE('utc', NOW())
+          WHERE
+            id = $1
+          RETURNING
+            *
+          ;`,
+      values: [sessionId],
+    });
+    return result.rows[0];
+  }
+}
+
 const session = {
   create,
   TIMEOUT_IN_MILISECONDS,
   findOneValidByToken,
   renew,
+  expireById,
 };
 
 export default session;
