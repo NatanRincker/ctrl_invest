@@ -127,8 +127,9 @@ export default function AuthPage() {
     <div className="min-h-screen bg-[#0b0f0e] text-gray-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="mb-6 text-center">
-          <h1 className="text-2xl font-semibold">Welcome</h1>
-          <p className="text-gray-400 text-sm">
+          <h1 className="text-2xl font-semibold">Welcome to</h1>
+          <h1 className="text-5xl font-semibold">ctrl_invest</h1>
+          <p className="text-gray-400 text-sm pt-10">
             Sign in to create your account or log in to continue.
           </p>
         </div>
