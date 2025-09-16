@@ -4,6 +4,7 @@ import migrator from "model/migrator";
 import user from "model/user";
 import { faker } from "@faker-js/faker/.";
 import session from "model/session";
+import asset_type from "model/asset_type";
 
 async function waitForAllServices() {
   await waitForWebServer();
@@ -41,12 +42,21 @@ async function createSession(userId) {
   return await session.create(userId);
 }
 
+async function getRandomAssetType() {
+  const assetTypeList = await asset_type.findAllAvailableOptions();
+  return getRandomElement(assetTypeList);
+  function getRandomElement(arr) {
+    return arr[Math.floor(Math.random() * arr.length)];
+  }
+}
+
 const orchestrator = {
   waitForAllServices,
   clearDatabase,
   runPendingMigrations,
   createUser,
   createSession,
+  getRandomAssetType,
 };
 
 export default orchestrator;
