@@ -4,8 +4,8 @@ import { NotFoundError } from "infra/errors";
 async function findAllAvailableOptions() {
   const result = await database.query({
     text: `
-      SELECT code, name, description
-      FROM asset_types;`,
+      SELECT code, name, symbol
+      FROM currencies;`,
     values: [],
   });
   return result.rows;
@@ -15,22 +15,22 @@ async function validateCodeExists(code) {
   const result = await database.query({
     text: `
     SELECT code
-    FROM asset_types
+    FROM currencies
     WHERE code = $1
     LIMIT 1;`,
     values: [code],
   });
   if (result.rowCount === 0) {
     throw new NotFoundError({
-      message: "Asset Type Not Found",
-      action: "Please, check if the Asset Type is correct",
+      message: "Currency Not Found",
+      action: "Please, check if the Currency code is correct",
     });
   }
   return true;
 }
 
-const asset_type = {
+const currency = {
   findAllAvailableOptions,
   validateCodeExists,
 };
-export default asset_type;
+export default currency;

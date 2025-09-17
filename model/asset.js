@@ -1,11 +1,14 @@
 import database from "infra/database";
 import { ValidationError } from "infra/errors";
+import currency from "./currency";
+import asset_type from "./asset_type";
 
 async function createUserAsset(assetInputValues, userId) {
   const inserInputValues = { userId, ...assetInputValues };
   assertMandatoryKeys(inserInputValues);
-  assertPriceValues("market_value", inserInputValues.market_value);
-  assertPriceValues("paid_price", inserInputValues.paid_price);
+  assertPriceValue("market_value", inserInputValues.market_value);
+  assertPriceValue("paid_price", inserInputValues.paid_price);
+  await assertValidReferences(inserInputValues);
   const result = await database.query({
     text: `
     INSERT into
@@ -62,7 +65,7 @@ function assertMandatoryKeys(obj) {
   }
 }
 
-function assertPriceValues(keyName, value) {
+function assertPriceValue(keyName, value) {
   if (typeof value !== "number" || !Number.isFinite(value)) {
     throw new ValidationError({
       message: `[${keyName}] is not a valid number`,
@@ -93,6 +96,11 @@ function assertPriceValues(keyName, value) {
       fields: keyName,
     });
   }
+}
+
+async function assertValidReferences(inserData) {
+  await currency.validateCodeExists(inserData.currency_code);
+  await asset_type.validateCodeExists(inserData.asset_type_code);
 }
 
 const asset = {

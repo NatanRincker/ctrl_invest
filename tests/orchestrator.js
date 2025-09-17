@@ -5,6 +5,7 @@ import user from "model/user";
 import { faker } from "@faker-js/faker/.";
 import session from "model/session";
 import asset_type from "model/asset_type";
+import currency from "model/currency";
 
 async function waitForAllServices() {
   await waitForWebServer();
@@ -45,9 +46,14 @@ async function createSession(userId) {
 async function getRandomAssetType() {
   const assetTypeList = await asset_type.findAllAvailableOptions();
   return getRandomElement(assetTypeList);
-  function getRandomElement(arr) {
-    return arr[Math.floor(Math.random() * arr.length)];
-  }
+}
+
+async function getRandomCurrency() {
+  const currencyList = await currency.findAllAvailableOptions();
+  return getRandomElement(currencyList);
+}
+function getRandomElement(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
 }
 
 const orchestrator = {
@@ -57,6 +63,7 @@ const orchestrator = {
   createUser,
   createSession,
   getRandomAssetType,
+  getRandomCurrency,
 };
 
 export default orchestrator;

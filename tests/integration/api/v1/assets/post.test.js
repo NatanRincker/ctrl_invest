@@ -1,5 +1,6 @@
 import orchestrator from "tests/orchestrator";
 import { version as uuidVersion } from "uuid";
+import setCookieParser from "set-cookie-parser";
 import { faker } from "@faker-js/faker/.";
 beforeAll(async () => {
   await orchestrator.waitForAllServices();
@@ -71,19 +72,82 @@ describe("POST to /api/v1/assets", () => {
         status_code: 400,
       });
     });
-    test.only("with unique and valid data", async () => {
+    test("With invalid currency_code", async () => {
       const assetTestUser = await orchestrator.createUser({});
       const assetTestSession = await orchestrator.createSession(
         assetTestUser.id,
       );
 
       const randomAssetType = await orchestrator.getRandomAssetType();
+      const invalidMktPriceResponse = await postCreateUserRequest(
+        {
+          code: "wadavasd_currency_code",
+          name: "Whathever Name for currency_code",
+          description: "",
+          currency_code: "XXX",
+          market_value: 1342412,
+          paid_price: faker.number.float({ fractionDigits: 8 }),
+          yfinance_compatible: true,
+          is_generic: true,
+          asset_type_code: randomAssetType.code,
+        },
+        assetTestSession,
+      );
+      expect(invalidMktPriceResponse.status).toBe(404);
+
+      const responseBody = await invalidMktPriceResponse.json();
+      expect(responseBody).toEqual({
+        name: "NotFoundError",
+        message: "Currency Not Found",
+        action: "Please, check if the Currency code is correct",
+        status_code: 404,
+      });
+    });
+    test("With invalid asset_type_code", async () => {
+      const assetTestUser = await orchestrator.createUser({});
+      const assetTestSession = await orchestrator.createSession(
+        assetTestUser.id,
+      );
+
+      const randomCurrency = await orchestrator.getRandomCurrency();
+      const invalidMktPriceResponse = await postCreateUserRequest(
+        {
+          code: "wadavasd_asset_type_code",
+          name: "Whathever Name for asset_type_code",
+          description: "",
+          currency_code: randomCurrency.code,
+          market_value: 1342412,
+          paid_price: faker.number.float({ fractionDigits: 8 }),
+          yfinance_compatible: true,
+          is_generic: true,
+          asset_type_code: "NOT_A_VALID_CODE",
+        },
+        assetTestSession,
+      );
+      expect(invalidMktPriceResponse.status).toBe(404);
+
+      const responseBody = await invalidMktPriceResponse.json();
+      expect(responseBody).toEqual({
+        name: "NotFoundError",
+        message: "Asset Type Not Found",
+        action: "Please, check if the Asset Type is correct",
+        status_code: 404,
+      });
+    });
+    test("with unique and valid data", async () => {
+      const assetTestUser = await orchestrator.createUser({});
+      const assetTestSession = await orchestrator.createSession(
+        assetTestUser.id,
+      );
+
+      const randomAssetType = await orchestrator.getRandomAssetType();
+      const randomCurrency = await orchestrator.getRandomCurrency();
       const validAssetResponse = await postCreateUserRequest(
         {
           code: "TEST_CODE_GG",
           name: "Test Asset GG",
           description: "asdadaf",
-          currency_code: "BRL",
+          currency_code: randomCurrency.code,
           market_value: 35.74,
           paid_price: 1000,
           yfinance_compatible: true,
@@ -95,30 +159,85 @@ describe("POST to /api/v1/assets", () => {
       expect(validAssetResponse.status).toBe(201);
 
       const responseBody = await validAssetResponse.json();
+      expect(uuidVersion(responseBody.id)).toBe(4);
       expect(responseBody.user_id).toBe(assetTestUser.id);
-
       expect(Date.parse(responseBody.created_date)).not.toBeNaN();
       expect(Date.parse(responseBody.updated_date)).not.toBeNaN();
     });
-    test("with duplicated ...", async () => {
-      const response = await postCreateUserRequest({
-        name: "Duplicated User",
-        email: "Teste1@teste.com",
-        password: "teste123",
+    test("with invalid  session", async () => {
+      const invalidSession = {
+        token:
+          "3e5b70f82f559ef2b3596d291548f1e25f2ffb42c645b71cb7fb6b220f432482e8c6fd50be7baefb9ab2aab991d1f841",
+      };
+
+      const randomAssetType = await orchestrator.getRandomAssetType();
+      const randomCurrency = await orchestrator.getRandomCurrency();
+      const invalidSessionResponse = await postCreateUserRequest(
+        {
+          code: "TEST_CODE_GG",
+          name: "Test Asset GG",
+          description: "asdadaf",
+          currency_code: randomCurrency.code,
+          market_value: 35.74,
+          paid_price: 1000,
+          yfinance_compatible: true,
+          is_generic: false,
+          asset_type_code: randomAssetType.code,
+        },
+        invalidSession,
+      );
+      expect(invalidSessionResponse.status).toBe(401);
+
+      const responseBody = await invalidSessionResponse.json();
+      expect(responseBody).toEqual({
+        name: "UnauthorizedError",
+        message: "Unable to Find a Valid Session",
+        action: "Please, review session information",
+        status_code: 401,
       });
 
-      expect(response.status).toBe(400);
+      // Set-Cookie assertions
+      const parsedSetCookie = setCookieParser(invalidSessionResponse, {
+        map: true,
+      });
 
-      const responseBody = await response.json();
-      expect(responseBody).toEqual({
-        name: "ValidationError",
-        message: "E-mail not Allowed",
-        action: "Use a different email address",
-        status_code: 400,
+      expect(parsedSetCookie.session_id).toEqual({
+        name: "session_id",
+        value: "invalid",
+        maxAge: -1,
+        path: "/",
+        httpOnly: true,
       });
     });
   });
-  describe("Undefined Session", () => {});
+  describe("Undefined Session", () => {
+    test("with unique and valid data", async () => {
+      const randomAssetType = await orchestrator.getRandomAssetType();
+      const randomCurrency = await orchestrator.getRandomCurrency();
+      const noSessionResponse = await postCreateUserRequest(
+        {
+          code: "TEST_CODE_GG",
+          name: "Test Asset GG",
+          description: "asdadaf",
+          currency_code: randomCurrency.code,
+          market_value: 35.74,
+          paid_price: 1000,
+          yfinance_compatible: true,
+          is_generic: false,
+          asset_type_code: randomAssetType.code,
+        },
+        {}, //no session
+      );
+      expect(noSessionResponse.status).toBe(401);
+      const responseBody = await noSessionResponse.json();
+      expect(responseBody).toEqual({
+        name: "UnauthorizedError",
+        message: "Unable to Find a Valid Session",
+        action: "Please, review session information",
+        status_code: 401,
+      });
+    });
+  });
 });
 
 async function postCreateUserRequest(assetProps, sessionObject) {
