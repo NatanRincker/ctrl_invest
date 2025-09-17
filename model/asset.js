@@ -1,7 +1,58 @@
 import database from "infra/database";
-import { ValidationError } from "infra/errors";
+import { ValidationError, NotFoundError } from "infra/errors";
 import currency from "./currency";
 import asset_type from "./asset_type";
+
+async function update(assetInputValues) {
+  console.log("assetInputValues.id");
+  console.log(assetInputValues.id);
+  const currentAsset = await findAssetById(assetInputValues.id);
+  const updateInputValues = {
+    ...currentAsset,
+    ...assetInputValues,
+  };
+  console.log(updateInputValues);
+
+  assertMandatoryKeys(updateInputValues);
+  assertPriceValue("market_value", updateInputValues.market_value);
+  assertPriceValue("paid_price", updateInputValues.paid_price);
+  await assertValidReferences(updateInputValues);
+
+  const result = await database.query({
+    text: `
+    UPDATE
+      assets
+    SET
+      code = $2,
+      name = $3,
+      description = $4,
+      currency_code = $5,
+      market_value = $6,
+      paid_price = $7,
+      yfinance_compatible = $8,
+      is_generic = $9,
+      asset_type_code = $10,
+      updated_date = TIMEZONE('utc', NOW())
+    WHERE
+      id = $1
+    RETURNING
+      *
+    ;`,
+    values: [
+      updateInputValues.id,
+      updateInputValues.code,
+      updateInputValues.name,
+      updateInputValues.description,
+      updateInputValues.currency_code,
+      updateInputValues.market_value,
+      updateInputValues.paid_price,
+      updateInputValues.yfinance_compatible,
+      updateInputValues.is_generic,
+      updateInputValues.asset_type_code,
+    ],
+  });
+  return result.rows[0];
+}
 
 async function createUserAsset(assetInputValues, userId) {
   const inserInputValues = { userId, ...assetInputValues };
@@ -65,37 +116,46 @@ function assertMandatoryKeys(obj) {
   }
 }
 
-function assertPriceValue(keyName, value) {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
+function assertPriceValue(keyName, StringValue) {
+  if (typeof StringValue !== "string") {
+    throw new ValidationError({
+      message: `[${keyName}] is not a string`,
+      action: "Please submit the number in string format",
+      fields: keyName,
+    });
+  }
+
+  const num = Number(StringValue);
+  if (isNaN(num)) {
     throw new ValidationError({
       message: `[${keyName}] is not a valid number`,
       action: "Please review submitted data",
       fields: keyName,
     });
   }
-  const abs = Math.abs(value);
 
-  // Integer digits check (precision cap via integer part)
-  const intPart = Math.trunc(abs);
-  // 11 digits max => 99_999_999_999
-  if (intPart > 99_999_999_999) {
+  const parts = StringValue.split(".");
+  const integerPart = parts[0].replace("-", "");
+  const decimalPart = parts.length > 1 ? parts[1] : "";
+
+  // Check total digits (precision)
+  if (integerPart.length + decimalPart.length > 19) {
     throw new ValidationError({
       message: `[${keyName}] exceeds the supported amount`,
       action: "Please review submitted data",
       fields: keyName,
     });
   }
-  // Fractional digits check: must be representable with <= 8 decimals
-  // Use rounding to 8 dp then compare with a small epsilon
-  const rounded8 = Math.round(abs * 1e8) / 1e8;
-  const epsilon = 1e-12; // tolerance for binary floats (way stricter than 1e-8)
-  if (Math.abs(abs - rounded8) > epsilon) {
+  // Check digits after decimal (scale)
+  if (decimalPart.length > 8) {
     throw new ValidationError({
       message: `[${keyName}] exceeds the supported fractional amount`,
       action: "Please review submitted data",
       fields: keyName,
     });
   }
+
+  return true;
 }
 
 async function assertValidReferences(inserData) {
@@ -103,7 +163,27 @@ async function assertValidReferences(inserData) {
   await asset_type.validateCodeExists(inserData.asset_type_code);
 }
 
+async function findAssetById(assetId) {
+  const result = await database.query({
+    text: `
+      SELECT *
+      FROM assets
+      WHERE
+        id = $1
+      LIMIT 1;`,
+    values: [assetId],
+  });
+  if (result.rowCount === 0) {
+    throw new NotFoundError({
+      message: "Asset Not Found",
+      action: "Please, check if the Asset Data",
+    });
+  }
+  return result.rows[0];
+}
+
 const asset = {
   createUserAsset,
+  update,
 };
 export default asset;

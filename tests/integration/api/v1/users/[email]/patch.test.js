@@ -16,13 +16,17 @@ describe("PATCH to /api/v1/users/[email]", () => {
         email: "Teste1@original.com",
       });
 
-      await orchestrator.createUser({
+      const testUser = await orchestrator.createUser({
         email: "Teste1@second.com",
       });
-
-      const patchResponse = await patchUserRequest("Teste1@second.com", {
-        email: "Teste1@original.com",
-      });
+      const testSession = await orchestrator.createSession(testUser.id);
+      const patchResponse = await patchUserRequest(
+        "Teste1@second.com",
+        {
+          email: "Teste1@original.com",
+        },
+        testSession,
+      );
       expect(patchResponse.status).toBe(400);
       const patchResponseBody = await patchResponse.json();
       expect(patchResponseBody).toEqual({
@@ -33,13 +37,17 @@ describe("PATCH to /api/v1/users/[email]", () => {
       });
     });
     test("with unique email", async () => {
-      await orchestrator.createUser({
+      const testUser = await orchestrator.createUser({
         email: "Teste1@unique.com",
       });
-
-      const patchResponse = await patchUserRequest("teste1@unique.com", {
-        email: "another@unique.com",
-      });
+      const testSession = await orchestrator.createSession(testUser.id);
+      const patchResponse = await patchUserRequest(
+        "teste1@unique.com",
+        {
+          email: "another@unique.com",
+        },
+        testSession,
+      );
       expect(patchResponse.status).toBe(200);
 
       const patchResponseBody = await patchResponse.json();
@@ -63,10 +71,14 @@ describe("PATCH to /api/v1/users/[email]", () => {
       const nameChangeTest = await orchestrator.createUser({
         name: "Just A. Name",
       });
-
-      const patchResponse = await patchUserRequest(nameChangeTest.email, {
-        name: "Another Name",
-      });
+      const testSession = await orchestrator.createSession(nameChangeTest.id);
+      const patchResponse = await patchUserRequest(
+        nameChangeTest.email,
+        {
+          name: "Another Name",
+        },
+        testSession,
+      );
       expect(patchResponse.status).toBe(200);
 
       const patchResponseBody = await patchResponse.json();
@@ -90,11 +102,15 @@ describe("PATCH to /api/v1/users/[email]", () => {
       const newPasswordTest = await orchestrator.createUser({
         password: "OriginalPassword",
       });
-      console.log(newPasswordTest);
 
-      const patchResponse = await patchUserRequest(newPasswordTest.email, {
-        password: "NewPassword",
-      });
+      const testSession = await orchestrator.createSession(newPasswordTest.id);
+      const patchResponse = await patchUserRequest(
+        newPasswordTest.email,
+        {
+          password: "NewPassword",
+        },
+        testSession,
+      );
       expect(patchResponse.status).toBe(200);
 
       const patchResponseBody = await patchResponse.json();
@@ -132,11 +148,12 @@ describe("PATCH to /api/v1/users/[email]", () => {
   });
 });
 
-async function patchUserRequest(currentEmail, userProps) {
+async function patchUserRequest(currentEmail, userProps, sessionObject) {
   return await fetch(`http://localhost:3000/api/v1/users/${currentEmail}`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
+      Cookie: `session_id=${sessionObject.token}`,
     },
 
     body: JSON.stringify({ ...userProps }),
