@@ -1,6 +1,6 @@
 exports.up = (pgm) => {
   // Minimal ISO-4217 table (add more rows later)
-  pgm.createTable("currency", {
+  pgm.createTable("currencies", {
     code: { type: "char(3)", primaryKey: true, notNull: true }, // 'USD', 'BRL', 'EUR', ...
     name: { type: "varchar(60)", notNull: true },
     symbol: { type: "varchar(8)" },
@@ -17,7 +17,7 @@ exports.up = (pgm) => {
   });
 
   pgm.sql(`
-    INSERT INTO currency (code, name, symbol) VALUES
+    INSERT INTO currencies (code, name, symbol) VALUES
       ('USD','US Dollar','$'),
       ('BRL','Real Brasileiro','R$'),
       ('EUR','Euro','€')

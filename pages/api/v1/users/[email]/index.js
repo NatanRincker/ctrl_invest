@@ -1,6 +1,7 @@
 import { createRouter } from "next-connect";
 import controller from "infra/controller";
 import user from "model/user.js";
+import session from "model/session";
 
 const router = createRouter();
 
@@ -16,10 +17,15 @@ async function getHandler(request, response) {
 }
 
 async function patchHandler(request, response) {
-  const userInputValues = request.body;
+  const requestSessionToken = request.cookies.session_id;
+  const sessionObj = await session.findOneValidByToken(requestSessionToken);
 
-  const updatedUser = await user.update(request.query.email, userInputValues);
+  if (sessionObj) {
+    const userInputValues = request.body;
 
-  let statusCode = 200;
-  return response.status(statusCode).json(updatedUser);
+    const updatedUser = await user.update(request.query.email, userInputValues);
+
+    let statusCode = 200;
+    return response.status(statusCode).json(updatedUser);
+  }
 }

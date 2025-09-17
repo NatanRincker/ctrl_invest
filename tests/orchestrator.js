@@ -4,6 +4,9 @@ import migrator from "model/migrator";
 import user from "model/user";
 import { faker } from "@faker-js/faker/.";
 import session from "model/session";
+import asset_type from "model/asset_type";
+import currency from "model/currency";
+import asset from "model/asset";
 
 async function waitForAllServices() {
   await waitForWebServer();
@@ -41,12 +44,61 @@ async function createSession(userId) {
   return await session.create(userId);
 }
 
+async function createUserAsset(assetInputData, userId) {
+  const currency_code =
+    assetInputData.currency_code || (await getRandomCurrency()).code;
+  const asset_type_code =
+    assetInputData.asset_type_code || (await getRandomAssetType()).code;
+
+  const market_value =
+    assetInputData.market_value ||
+    faker.number.float({ fractionDigits: 8 }).toString();
+
+  const paid_price =
+    assetInputData.paid_price ||
+    faker.number.float({ fractionDigits: 8 }).toString();
+
+  return await asset.createUserAsset(
+    {
+      code:
+        assetInputData.code ||
+        faker.string.alphanumeric({ length: { min: 1, max: 64 } }),
+      name: assetInputData.name || "Test Asset GG",
+      description: assetInputData.description || "This is A Test Description",
+      currency_code,
+      market_value,
+      paid_price,
+      yfinance_compatible:
+        assetInputData.yfinance_compatible || faker.datatype.boolean(),
+      is_generic: assetInputData.is_generic || faker.datatype.boolean(),
+      asset_type_code,
+    },
+    userId,
+  );
+}
+
+async function getRandomAssetType() {
+  const assetTypeList = await asset_type.findAllAvailableOptions();
+  return getRandomElement(assetTypeList);
+}
+
+async function getRandomCurrency() {
+  const currencyList = await currency.findAllAvailableOptions();
+  return getRandomElement(currencyList);
+}
+function getRandomElement(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
 const orchestrator = {
   waitForAllServices,
   clearDatabase,
   runPendingMigrations,
   createUser,
   createSession,
+  createUserAsset,
+  getRandomAssetType,
+  getRandomCurrency,
 };
 
 export default orchestrator;
