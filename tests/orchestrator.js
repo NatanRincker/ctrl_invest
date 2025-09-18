@@ -7,6 +7,7 @@ import session from "model/session";
 import asset_type from "model/asset_type";
 import currency from "model/currency";
 import asset from "model/asset";
+import transaction from "model/transaction";
 
 async function waitForAllServices() {
   await waitForWebServer();
@@ -86,6 +87,12 @@ async function getRandomCurrency() {
   const currencyList = await currency.findAllAvailableOptions();
   return getRandomElement(currencyList);
 }
+
+async function getRandomTransactionType() {
+  const currencyList = await transaction.getAvailableTransactionTypes();
+  return getRandomElement(currencyList);
+}
+
 function getRandomElement(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
@@ -99,6 +106,7 @@ const orchestrator = {
   createUserAsset,
   getRandomAssetType,
   getRandomCurrency,
+  getRandomTransactionType,
 };
 
 export default orchestrator;
