@@ -7,16 +7,10 @@ async function create(transactionData) {
   assertMandatoryKeys(transactionData);
   assertPriceValue("quantity", transactionData.quantity);
   assertPriceValue("unit_price", transactionData.unit_price);
-
-  console.log("[OCCURED_DATE INPUT] transactionData");
-  console.log(transactionData);
   transactionData.occurred_date = assertOccuredDate(
     transactionData.occurred_date,
   );
   await assertValidReferences(transactionData);
-
-  console.log("[ASSERTED] transactionData");
-  console.log(transactionData);
 
   const result = await database.query({
     text: `
@@ -119,8 +113,19 @@ function assertOccuredDate(occured_date) {
     occured_date === ""
   ) {
     return new Date(Date.now()).toISOString();
+  }
+  if (typeof occured_date !== "string") {
+    throw new ValidationError({
+      message: "[occurred_date] is not Valid",
+      action: "Please review submitted data",
+      fields: "occurred_date",
+    });
   } else {
-    if (!database.isValidDateFormat(occured_date)) {
+    console.log("enter try");
+    const isValidDateString = database.isValidDateFormat(occured_date);
+    console.log(occured_date);
+    console.log(isValidDateString);
+    if (!isValidDateString) {
       throw new ValidationError({
         message: "[occurred_date] is not Valid",
         action: "Please review submitted data",
