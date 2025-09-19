@@ -49,7 +49,7 @@ describe("POST to /api/v1/transactions", () => {
           asset_id: testAsset.id,
           transaction_type_key: randTransactionType.key,
           quantity: faker.number.int({ min: 1, max: 1000000000 }).toString(),
-          unit_price: faker.number.float({ fractionDigits: 9 }).toString(),
+          unit_price: faker.number.float({ fractionDigits: 11 }).toString(),
           description: "test_description",
           currency_code: "USD",
           occurred_date: new Date(Date.now()).toISOString(),
@@ -151,7 +151,7 @@ describe("POST to /api/v1/transactions", () => {
       const responseBody = await response.json();
       expect(responseBody).toEqual({
         name: "UnauthorizedError",
-        message: "Asset and User don't are not related",
+        message: "Asset and User are not related",
         action: "Please, check if asset_id and user_id are correct",
         status_code: 401,
       });
@@ -180,7 +180,7 @@ describe("POST to /api/v1/transactions", () => {
       const responseBody = await response.json();
       expect(responseBody).toEqual({
         name: "UnauthorizedError",
-        message: "Asset and User don't are not related",
+        message: "Asset and User are not related",
         action: "Please, check if asset_id and user_id are correct",
         status_code: 401,
       });
@@ -203,7 +203,9 @@ describe("POST to /api/v1/transactions", () => {
           asset_id: testAsset.id,
           transaction_type_key: randTransactionType.key,
           quantity: faker.number.int({ min: 1, max: 1000000000 }).toString(),
-          unit_price: faker.number.float({ fractionDigits: 8 }).toString(),
+          unit_price: faker.number
+            .float({ max: 1000000000, fractionDigits: 8 })
+            .toString(),
           description: "test_description",
           currency_code: randCurrency.code,
           occurred_date: randOccuredDate,
@@ -218,7 +220,6 @@ describe("POST to /api/v1/transactions", () => {
       expect(responseBody.asset_id).toBe(testAsset.id);
       expect(responseBody.transaction_type_key).toBe(randTransactionType.key);
       expect(responseBody.description).toBe("test_description");
-      expect(responseBody.currency_code).toBe(randCurrency.code);
       expect(responseBody.currency_code).toBe(randCurrency.code);
       expect(Date.parse(responseBody.occurred_date)).not.toBeNaN();
       expect(Date.parse(responseBody.created_date)).not.toBeNaN();

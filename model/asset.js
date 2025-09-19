@@ -186,7 +186,7 @@ async function assertAssetBelongsToUser(asset_id, user_id) {
   });
   if (result.rowCount === 0) {
     throw new UnauthorizedError({
-      message: "Asset and User don't are not related",
+      message: "Asset and User are not related",
       action: "Please, check if asset_id and user_id are correct",
     });
   }

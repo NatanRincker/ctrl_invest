@@ -44,6 +44,20 @@ async function create(transactionData) {
   return result.rows[0];
 }
 
+async function findAssetTransactions(asset_id, user_id) {
+  await asset.assertAssetBelongsToUser(asset_id, user_id);
+  const result = await database.query({
+    text: `
+    SELECT * from
+      transactions
+    WHERE
+      asset_id = $1
+    ;`,
+    values: [asset_id],
+  });
+  return result.rows;
+}
+
 function assertMandatoryKeys(obj) {
   const optionalKeys = ["description", "occurred_date"];
 
@@ -179,6 +193,7 @@ async function getAvailableTransactionTypes() {
 const transaction = {
   create,
   getAvailableTransactionTypes,
+  findAssetTransactions,
 };
 
 export default transaction;
