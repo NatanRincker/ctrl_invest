@@ -58,6 +58,76 @@ async function findAssetTransactions(asset_id, user_id) {
   return result.rows;
 }
 
+async function update(transactionData) {
+  const currentTransaction = await findTransactionById(transactionData.id);
+  const updateInputValues = {
+    ...currentTransaction,
+    ...transactionData,
+  };
+
+  assertMandatoryKeys(updateInputValues);
+  assertPriceValue("quantity", updateInputValues.quantity);
+  assertPriceValue("unit_price", updateInputValues.unit_price);
+  if (transactionData.occured_date) {
+    updateInputValues.occurred_date = assertOccuredDate(
+      updateInputValues.occurred_date,
+    );
+  }
+  await assertValidReferences(updateInputValues);
+
+  const result = await database.query({
+    text: `
+    UPDATE
+      transactions
+    SET
+      user_id = $2,
+      asset_id = $3,
+      transaction_type_key = $4,
+      quantity = $5,
+      unit_price = $6,
+      description = $7,
+      currency_code = $8,
+      occurred_date = $9,
+      updated_date = TIMEZONE('utc', NOW())
+    WHERE
+      id = $1
+    RETURNING
+      *
+    ;`,
+    values: [
+      updateInputValues.id,
+      updateInputValues.user_id,
+      updateInputValues.asset_id,
+      updateInputValues.transaction_type_key,
+      updateInputValues.quantity,
+      updateInputValues.unit_price,
+      updateInputValues.description,
+      updateInputValues.currency_code,
+      updateInputValues.occurred_date,
+    ],
+  });
+  return result.rows[0];
+}
+
+async function findTransactionById(transactionId) {
+  const result = await database.query({
+    text: `
+      SELECT *
+      FROM transactions
+      WHERE
+        id = $1
+      LIMIT 1;`,
+    values: [transactionId],
+  });
+  if (result.rowCount === 0) {
+    throw new NotFoundError({
+      message: "Asset Not Found",
+      action: "Please, check if the Asset Data",
+    });
+  }
+  return result.rows[0];
+}
+
 function assertMandatoryKeys(obj) {
   const optionalKeys = ["description", "occurred_date"];
 
@@ -192,6 +262,7 @@ async function getAvailableTransactionTypes() {
 
 const transaction = {
   create,
+  update,
   getAvailableTransactionTypes,
   findAssetTransactions,
 };

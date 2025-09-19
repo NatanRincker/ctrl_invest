@@ -10,16 +10,17 @@ beforeAll(async () => {
 describe("PATCH to /api/v1/assets", () => {
   describe("Defined User", () => {
     test("with unique data", async () => {
-      const testUser = await orchestrator.createUser({});
-      const testSession = await orchestrator.createSession(testUser.id);
+      const testTransaction = await orchestrator.createRandTransaction({});
+      const testSession = await orchestrator.createSession(
+        testTransaction.user_id,
+      );
 
-      const originalAsset = await orchestrator.createUserAsset({}, testUser.id);
-      console.log(originalAsset);
+      console.log(testTransaction);
       const patchResponse = await patchAssetRequest(
-        originalAsset.id,
+        testTransaction.id,
         {
-          name: "New Asset Name",
-          paid_price: "150.53",
+          quantity: "10",
+          unit_price: "150.53",
         },
         testSession,
       );
@@ -28,18 +29,16 @@ describe("PATCH to /api/v1/assets", () => {
       const patchResponseBody = await patchResponse.json();
 
       expect(patchResponseBody).toEqual({
-        id: originalAsset.id,
-        code: originalAsset.code,
-        name: "New Asset Name",
-        description: originalAsset.description,
-        currency_code: originalAsset.currency_code,
-        market_value: originalAsset.market_value,
-        paid_price: "150.53000000",
-        yfinance_compatible: originalAsset.yfinance_compatible,
-        is_generic: originalAsset.is_generic,
-        asset_type_code: originalAsset.asset_type_code,
+        id: testTransaction.id,
+        user_id: testTransaction.user_id,
+        asset_id: testTransaction.asset_id,
+        transaction_type_key: testTransaction.transaction_type_key,
+        quantity: "10.00000000",
+        unit_price: "150.53000000",
+        description: testTransaction.description,
+        currency_code: testTransaction.currency_code,
+        occurred_date: new Date(testTransaction.occurred_date).toISOString(),
         created_date: patchResponseBody.created_date,
-        user_id: originalAsset.user_id,
         updated_date: patchResponseBody.updated_date,
       });
       expect(uuidVersion(patchResponseBody.id)).toBe(4);
@@ -52,16 +51,21 @@ describe("PATCH to /api/v1/assets", () => {
   });
 });
 
-async function patchAssetRequest(assetId, assetProps, sessionObject) {
+async function patchAssetRequest(
+  transactionId,
+  transactionProps,
+  sessionObject,
+) {
+  const submitData = { id: transactionId, ...transactionProps };
   console.log("patchAssetRequest > assetId");
-  console.log(assetId);
-  return await fetch(`http://localhost:3000/api/v1/assets`, {
+  console.log(submitData);
+  return await fetch(`http://localhost:3000/api/v1/transactions`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
       Cookie: `session_id=${sessionObject.token}`,
     },
 
-    body: JSON.stringify({ id: assetId, ...assetProps }),
+    body: JSON.stringify(submitData),
   });
 }

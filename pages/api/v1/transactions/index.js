@@ -1,6 +1,5 @@
 import { createRouter } from "next-connect";
 import controller from "infra/controller";
-import asset from "model/asset";
 import session from "model/session";
 import transaction from "model/transaction";
 
@@ -29,12 +28,12 @@ async function postHandler(request, response) {
 async function patchHandler(request, response) {
   const requestSessionToken = request.cookies.session_id;
   const sessionObj = await session.findOneValidByToken(requestSessionToken);
-  const assetInputValues = request.body;
+  const transactionInputValues = request.body;
 
   if (sessionObj) {
-    const updatedAsset = await asset.update(assetInputValues);
+    const updatedTransaction = await transaction.update(transactionInputValues);
     let statusCode = 200;
 
-    return response.status(statusCode).json(updatedAsset);
+    return response.status(statusCode).json(updatedTransaction);
   }
 }
