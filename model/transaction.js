@@ -1,5 +1,9 @@
 import database from "infra/database";
-import { ValidationError, NotFoundError } from "infra/errors";
+import {
+  ValidationError,
+  NotFoundError,
+  UnauthorizedError,
+} from "infra/errors";
 import currency from "./currency";
 import asset from "./asset";
 
@@ -109,6 +113,30 @@ async function update(transactionData) {
   return result.rows[0];
 }
 
+async function deleteUserTransaction(transaction_id, user_id) {
+  console.log("transaction_id");
+  console.log(transaction_id);
+  const transactionToDelete = await findTransactionById(transaction_id);
+
+  if (transactionToDelete.user_id === user_id) {
+    const result = await database.query({
+      text: `
+          DELETE FROM
+            transactions
+          WHERE
+            id = $1
+          RETURNING *;`,
+      values: [transaction_id],
+    });
+    return result.rows[0];
+  } else {
+    throw new UnauthorizedError({
+      message: "You don't have permission to execute this  action",
+      action: "Please, review credentials and transaction data",
+    });
+  }
+}
+
 async function findTransactionById(transactionId) {
   const result = await database.query({
     text: `
@@ -121,8 +149,8 @@ async function findTransactionById(transactionId) {
   });
   if (result.rowCount === 0) {
     throw new NotFoundError({
-      message: "Asset Not Found",
-      action: "Please, check if the Asset Data",
+      message: "Unable to locate the specified transaction",
+      action: "Please, review the transaction data",
     });
   }
   return result.rows[0];
@@ -263,6 +291,7 @@ async function getAvailableTransactionTypes() {
 const transaction = {
   create,
   update,
+  deleteUserTransaction,
   getAvailableTransactionTypes,
   findAssetTransactions,
 };
