@@ -7,6 +7,7 @@ import session from "model/session";
 import asset_type from "model/asset_type";
 import currency from "model/currency";
 import asset from "model/asset";
+import transaction from "model/transaction";
 
 async function waitForAllServices() {
   await waitForWebServer();
@@ -77,6 +78,32 @@ async function createUserAsset(assetInputData, userId) {
   );
 }
 
+async function createRandTransaction(inputData) {
+  const testUser = inputData.testUser || (await createUser({}));
+  const testAsset =
+    inputData.testAsset || (await createUserAsset({}, testUser.id));
+  const randTransactionType = await getRandomTransactionType();
+  const randCurrency = await getRandomCurrency();
+  const randOccuredDate = getRandomElement([
+    "",
+    null,
+    new Date(Date.now()).toISOString(),
+  ]);
+
+  return await transaction.create({
+    user_id: testUser.id,
+    asset_id: testAsset.id,
+    transaction_type_key: randTransactionType.key,
+    quantity: faker.number.int({ min: 1, max: 1000000000 }).toString(),
+    unit_price: faker.number
+      .float({ max: 1000000000, fractionDigits: 8 })
+      .toString(),
+    description: "test_description",
+    currency_code: randCurrency.code,
+    occurred_date: randOccuredDate,
+  });
+}
+
 async function getRandomAssetType() {
   const assetTypeList = await asset_type.findAllAvailableOptions();
   return getRandomElement(assetTypeList);
@@ -86,6 +113,12 @@ async function getRandomCurrency() {
   const currencyList = await currency.findAllAvailableOptions();
   return getRandomElement(currencyList);
 }
+
+async function getRandomTransactionType() {
+  const currencyList = await transaction.getAvailableTransactionTypes();
+  return getRandomElement(currencyList);
+}
+
 function getRandomElement(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
@@ -97,8 +130,10 @@ const orchestrator = {
   createUser,
   createSession,
   createUserAsset,
+  createRandTransaction,
   getRandomAssetType,
   getRandomCurrency,
+  getRandomTransactionType,
 };
 
 export default orchestrator;

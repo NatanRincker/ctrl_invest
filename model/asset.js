@@ -1,5 +1,9 @@
 import database from "infra/database";
-import { ValidationError, NotFoundError } from "infra/errors";
+import {
+  ValidationError,
+  NotFoundError,
+  UnauthorizedError,
+} from "infra/errors";
 import currency from "./currency";
 import asset_type from "./asset_type";
 
@@ -11,8 +15,6 @@ async function update(assetInputValues) {
     ...currentAsset,
     ...assetInputValues,
   };
-  console.log(updateInputValues);
-
   assertMandatoryKeys(updateInputValues);
   assertPriceValue("market_value", updateInputValues.market_value);
   assertPriceValue("paid_price", updateInputValues.paid_price);
@@ -98,7 +100,6 @@ async function createUserAsset(assetInputValues, userId) {
 
 function assertMandatoryKeys(obj) {
   const optionalKeys = ["description"];
-  delete obj[optionalKeys[0]];
 
   if (obj == null || typeof obj !== "object") {
     throw new TypeError("Expected an object");
@@ -106,12 +107,13 @@ function assertMandatoryKeys(obj) {
   const badKeys = Object.keys(obj).filter(
     (k) => obj[k] === null || obj[k] === "",
   );
+  const badRequiredKeys = badKeys.filter((k) => !optionalKeys.includes(k));
 
-  if (badKeys.length) {
+  if (badRequiredKeys.length) {
     throw new ValidationError({
-      message: `[${badKeys}] Cannot be empty nor null`,
+      message: `[${badRequiredKeys}] Cannot be empty nor null`,
       action: "Please review submitted data",
-      fields: badKeys,
+      fields: badRequiredKeys,
     });
   }
 }
@@ -163,6 +165,34 @@ async function assertValidReferences(inserData) {
   await asset_type.validateCodeExists(inserData.asset_type_code);
 }
 
+async function assertAssetBelongsToUser(asset_id, user_id) {
+  if (typeof asset_id !== "string" && typeof user_id !== "string") {
+    throw new ValidationError({
+      message: `[
+      ${typeof asset_id === "string" ? "asset_id," : ""}
+      ${typeof user_id === "string" ? "user_id," : ""}] is not Valid`,
+      action: "Please review submitted data",
+      fields: "occurred_date",
+    });
+  }
+  const result = await database.query({
+    text: `
+    SELECT *
+    FROM assets
+    WHERE id = $1
+    AND user_id = $2
+    LIMIT 1;`,
+    values: [asset_id, user_id],
+  });
+  if (result.rowCount === 0) {
+    throw new UnauthorizedError({
+      message: "Asset and User are not related",
+      action: "Please, check if asset_id and user_id are correct",
+    });
+  }
+  return true;
+}
+
 async function findAssetById(assetId) {
   const result = await database.query({
     text: `
@@ -185,5 +215,6 @@ async function findAssetById(assetId) {
 const asset = {
   createUserAsset,
   update,
+  assertAssetBelongsToUser,
 };
 export default asset;

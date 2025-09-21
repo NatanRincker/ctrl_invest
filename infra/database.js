@@ -18,13 +18,6 @@ async function query(queryObject) {
   }
 }
 
-const database = {
-  query,
-  getNewClient,
-};
-
-export default database;
-
 function getSSLValues() {
   if (process.env.POSTGRES_CA) {
     return {
@@ -46,3 +39,16 @@ async function getNewClient() {
   await client.connect();
   return client;
 }
+
+function isValidDateFormat(dateString) {
+  const dateObject = new Date(dateString);
+  return dateObject instanceof Date && !isNaN(dateObject.valueOf());
+}
+
+const database = {
+  query,
+  getNewClient,
+  isValidDateFormat,
+};
+
+export default database;

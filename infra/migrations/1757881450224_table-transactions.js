@@ -20,12 +20,14 @@ exports.up = (pgm) => {
     quantity: { type: "numeric(19,8)", notNull: true }, // null for non-qty events
     unit_price: { type: "numeric(19,8)", notNull: true }, // null for non-qty events
 
-    description: { type: "char(200)" },
+    description: { type: "varchar(200)" },
     currency_code: { type: "char(3)", notNull: true },
 
-    yfinance_compatible: { type: "boolean", notNull: true },
-
-    occurred_date: { type: "timestamptz", notNull: true },
+    occurred_date: {
+      type: "timestamptz",
+      notNull: true,
+      default: pgm.func("timezone('utc', now())"),
+    },
 
     created_date: {
       type: "timestamptz",

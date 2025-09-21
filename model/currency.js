@@ -1,5 +1,5 @@
 import database from "infra/database";
-import { NotFoundError } from "infra/errors";
+import { NotFoundError, ValidationError } from "infra/errors";
 
 async function findAllAvailableOptions() {
   const result = await database.query({
@@ -12,6 +12,12 @@ async function findAllAvailableOptions() {
 }
 
 async function validateCodeExists(code) {
+  if (typeof code !== "string") {
+    throw new ValidationError({
+      message: `[${code}] is not Valid`,
+      action: "Please review submitted data",
+    });
+  }
   const result = await database.query({
     text: `
     SELECT code
