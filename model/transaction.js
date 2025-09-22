@@ -6,6 +6,7 @@ import {
 } from "infra/errors";
 import currency from "./currency";
 import asset from "./asset";
+import asset_position from "./asset_position";
 
 async function create(transactionData) {
   assertMandatoryKeys(transactionData);
@@ -45,6 +46,7 @@ async function create(transactionData) {
       transactionData.occurred_date,
     ],
   });
+  await asset_position.handleNewTransaction(transactionData);
   return result.rows[0];
 }
 
@@ -254,6 +256,9 @@ async function assertValidReferences(insertData) {
 }
 
 async function validateTransactionType(transaction_type_key) {
+  console.log("validateTransactionType");
+  console.log(transaction_type_key);
+
   if (typeof transaction_type_key !== "string") {
     throw new ValidationError({
       message: `[transaction_type_key] is not Valid`,

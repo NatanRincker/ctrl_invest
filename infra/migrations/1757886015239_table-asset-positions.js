@@ -18,7 +18,13 @@ exports.up = (pgm) => {
     total_cost: { type: "numeric(19,8)", notNull: true, default: 0 },
     avg_cost: { type: "numeric(19,8)", notNull: true, default: 0 },
     realized_pnl: { type: "numeric(19,8)", notNull: true, default: 0 },
+    yield: { type: "numeric(19,8)", notNull: true, default: 0 },
 
+    created_date: {
+      type: "timestamptz",
+      notNull: true,
+      default: pgm.func("timezone('utc', now())"),
+    },
     updated_date: {
       type: "timestamptz",
       notNull: true,

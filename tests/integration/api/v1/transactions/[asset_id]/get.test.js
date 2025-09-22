@@ -7,10 +7,13 @@ beforeAll(async () => {
   await orchestrator.runPendingMigrations();
 });
 
-describe("GET to /api/v1/users/[email]", () => {
+describe("GET to /api/v1/transactions/[asset_id]", () => {
   describe("Anonymous User", () => {
     test("with no session", async () => {
-      const randTransaction = await orchestrator.createRandTransaction({});
+      const randTransaction = await orchestrator.createRandTransaction({
+        transaction_quantity: (4252).toString(),
+        transaction_unit_price: (21.356).toString(),
+      });
 
       const getResponse = await getTransactionRequest(
         randTransaction.asset_id,
