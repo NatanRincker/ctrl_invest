@@ -82,7 +82,8 @@ async function createRandTransaction(inputData) {
   const testUser = inputData.testUser || (await createUser({}));
   const testAsset =
     inputData.testAsset || (await createUserAsset({}, testUser.id));
-  const randTransactionType = await getRandomTransactionType();
+  const randTransactionTypeKey =
+    inputData.transaction_type_key || (await getRandomTransactionType()).key;
   const randCurrency = await getRandomCurrency();
   const randOccuredDate = getRandomElement([
     "",
@@ -90,14 +91,19 @@ async function createRandTransaction(inputData) {
     new Date(Date.now()).toISOString(),
   ]);
 
+  const quantity =
+    inputData.transaction_quantity ||
+    faker.number.int({ min: 1, max: 99_999 }).toString();
+  const unit_price =
+    inputData.transaction_unit_price ||
+    faker.number.float({ max: 999_999, fractionDigits: 8 }).toString();
+
   return await transaction.create({
     user_id: testUser.id,
     asset_id: testAsset.id,
-    transaction_type_key: randTransactionType.key,
-    quantity: faker.number.int({ min: 1, max: 1000000000 }).toString(),
-    unit_price: faker.number
-      .float({ max: 1000000000, fractionDigits: 8 })
-      .toString(),
+    transaction_type_key: randTransactionTypeKey,
+    quantity: quantity,
+    unit_price: unit_price,
     description: "test_description",
     currency_code: randCurrency.code,
     occurred_date: randOccuredDate,
