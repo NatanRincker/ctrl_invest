@@ -9,7 +9,7 @@ exports.up = (pgm) => {
       },
     },
 
-    code: { type: "varchar(64)", notNull: true },
+    code: { type: "varchar(64)", unique: true, notNull: true },
     name: { type: "varchar(200)", notNull: true },
     description: { type: "char(200)" },
 
@@ -40,7 +40,7 @@ exports.up = (pgm) => {
       ('REIT',           'REITs',                         'Real Estate Investment Trust (EUA e outros)'),
       ('RENDA_FIXA',     'Renda Fixa',                    'Títulos de renda fixa (CDB, LCI/LCA, Debêntures etc.)'),
       ('TESOURO_DIRETO', 'Tesouro Direto',                'Títulos públicos federais'),
-      ('CRIPTO',         'Cripto',                        'Criptomoedas'),
+      ('CRYPTO',         'Criptomoeada',                        'Criptomoedas'),
       ('BDR',            'BDR',                           'Brazilian Depositary Receipts'),
       ('COMMODITY',      'Commodity',                     'Ouro, petróleo, e outras commodities')
     ON CONFLICT (code) DO NOTHING;

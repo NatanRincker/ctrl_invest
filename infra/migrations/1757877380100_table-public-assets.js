@@ -18,7 +18,7 @@ exports.up = (pgm) => {
 
     yfinance_compatible: { type: "boolean", notNull: true },
 
-    asset_type_id: { type: "integer", notNull: true },
+    asset_type_code: { type: "varchar(64)", notNull: true },
 
     created_date: {
       type: "timestamptz",
