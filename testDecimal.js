@@ -9,3 +9,5 @@ const back = totalCost.times(unitPrice);
 
 console.log(totalCost);
 console.log(back);
+
+console.log(process.env.NODE_ENV);
