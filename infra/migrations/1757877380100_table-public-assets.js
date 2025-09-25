@@ -9,7 +9,7 @@ exports.up = (pgm) => {
       },
     },
 
-    code: { type: "varchar(64)", notNull: true },
+    code: { type: "varchar(64)", unique: true, notNull: true },
     name: { type: "varchar(200)", notNull: true },
     description: { type: "char(200)" },
     currency_code: { type: "char(3)", notNull: true },

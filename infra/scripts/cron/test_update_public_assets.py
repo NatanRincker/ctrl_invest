@@ -27,32 +27,12 @@ def _authorized(headers) -> bool:
 # ---- Config knobs (tune in Vercel env) --------------------------------------
 #DB_URL = os.environ["DATABASE_URL"]
 def ssl_kwargs_from_env():
-    pem  = os.getenv("POSTGRES_CA")
-    if not pem:
-        return {"sslmode": "disable"}
-
-    ca_path = os.path.join(tempfile.gettempdir(), "pg-ca.pem")
-    tmp_path = ca_path + ".tmp"
-
-    # Only rewrite if contents differ (cheap hash compare)
-    def _sha256(s: str) -> str:
-        return hashlib.sha256(s.encode("utf-8")).hexdigest()
-
-    new_hash = _sha256(pem)
-    old_hash = None
-    try:
-        with open(ca_path, "r", encoding="utf-8", newline="\n") as f:
-            old_hash = _sha256(f.read())
-    except FileNotFoundError:
-        pass
-
-    if new_hash != old_hash:
-        # Atomic replace so readers never see a half-written file
-        with open(tmp_path, "w", encoding="utf-8", newline="\n") as f:
-            f.write(pem)
-        os.replace(tmp_path, ca_path)
-
-
+    script_path = os.path.abspath(__file__)
+    script_dir = os.path.dirname(script_path)
+    ca_path = os.path.join(script_dir, "pg-ca.pem")
+    # next line is windows only:
+    print("--- ca_path ---")
+    print(ca_path)
     return {"sslmode": "verify-full", "sslrootcert": ca_path}
 
 DB_CONNECTION =  {
@@ -67,8 +47,8 @@ DB_CONNECTION =  {
 BATCH_SIZE   = int(os.environ.get("YF_BATCH_SIZE", "400"))     # ~15 batches for 6k
 MAX_WORKERS  = int(os.environ.get("YF_MAX_WORKERS", "24"))     # parallel per batch
 RETRIES      = int(os.environ.get("YF_RETRIES", "3"))
-SLEEP_MIN    = float(os.environ.get("YF_SLEEP_MIN", "0.05"))   # jitter between batches
-SLEEP_MAX    = float(os.environ.get("YF_SLEEP_MAX", "0.20"))
+SLEEP_MIN    = float(os.environ.get("YF_SLEEP_MIN", "5.0"))   # jitter between batches
+SLEEP_MAX    = float(os.environ.get("YF_SLEEP_MAX", "10.0"))
 
 # Optional sharding (useful if you split into multiple cron invocations)
 SHARDS       = int(os.environ.get("SHARDS", "1"))              # e.g., 3
@@ -87,8 +67,10 @@ def _load_codes(conn):
         cur.execute("""
             SELECT code FROM public_assets
             WHERE yfinance_compatible = TRUE
+            ORDER BY code ASC;
         """)
         rows = [r[0] for r in cur.fetchall()]
+        cur.close()
     if SHARDS > 1:
         rows = [c for c in rows if _shard_of(c) == THIS_SHARD]
     return rows
@@ -98,7 +80,9 @@ def _fast_price_one(symbol: str) -> tuple[str, float | None]:
     Fetch last price using yfinance fast_info only.
     Retries with small backoff. Returns (symbol, price|None).
     """
+    retry_sleep = 5
     for attempt in range(1, RETRIES + 1):
+        retry_sleep = retry_sleep * 5
         try:
             fi = yf.Ticker(symbol).fast_info  # dict-like
             if fi:
@@ -110,7 +94,13 @@ def _fast_price_one(symbol: str) -> tuple[str, float | None]:
                     v = float(v)
                     if v > 0:
                         return symbol, v
-        except Exception:
+        except Exception as e:
+            print('Error at _fast_price_one')
+            if type(e).__name__ == "YFRateLimitError":
+                print(f"SAFETY WAIT: Sleeping for {retry_sleep} before retry for {symbol}")
+                time.sleep(retry_sleep)
+            else:
+                print(type(e).__name__)
             pass
         time.sleep(min(0.25 * attempt + random.random() * 0.25, 1.0))
     return symbol, None
@@ -135,13 +125,15 @@ def _bulk_update_prices(conn, price_map: dict[str, float]) -> int:
     COPY into temp table then UPDATE…FROM for speed & atomicity.
     """
     rows = [(code, _q8(val)) for code, val in price_map.items()]
+    print('rows')
+    print(rows)
     if not rows:
         return 0
     with conn.cursor() as cur:
-        cur.execute("CREATE TEMP TABLE _prices(code text PRIMARY KEY, price numeric(19,8));")
-        with cur.copy("COPY _prices (code, price) FROM STDIN WITH (FORMAT CSV)") as cp:
+        cur.execute("CREATE TEMP TABLE IF NOT EXISTS _prices(code text PRIMARY KEY, price numeric(19,8));")
+        with cur.copy("COPY _prices (code, price) FROM STDIN") as cp:
             for code, price in rows:
-                cp.write_row((code, str(price)))
+                cp.write_row([code, str(price)])
         cur.execute("""
             UPDATE public_assets pa
             SET market_value = p.price,
@@ -151,34 +143,81 @@ def _bulk_update_prices(conn, price_map: dict[str, float]) -> int:
         """)
     return len(rows)
 
+def test_bulk_update_prices(conn, price_map: dict[str, float]) -> int:
+    """
+    COPY into temp table then UPDATE…FROM for speed & atomicity.
+    """
+    rows = [(code, _q8(val)) for code, val in price_map.items()]
+    print('rows')
+    print(rows)
+    if not rows:
+        return 0
+    with conn.cursor() as cur:
+        for code, price in rows:
+            upddate_query = f"""
+                UPDATE public_assets
+                SET market_value = {str(price)},
+                    updated_date = timezone('utc', now())
+                WHERE code = '{code}';
+            """
+            print('upddate_query')
+            print(upddate_query)
+            cur.execute(upddate_query)
+            print("update executed")
+    return len(rows)
+
 def _batched(seq, n):
     for i in range(0, len(seq), n):
         yield seq[i:i+n]
 
-class handler(BaseHTTPRequestHandler):
+def manual_update_public_assets():
+    try:
+        total_updated = 0
+        with psycopg.connect(**DB_CONNECTION) as conn:
+            codes = _load_codes(conn)
+            for batch in _batched(codes, BATCH_SIZE):
+                prices = _fetch_batch_fast_prices(batch)   # lastPrice only
 
-    def do_GET(self):
-        if not _authorized(self.headers):
-            self.send_response(401); self.end_headers()
-            print("Unauthorized")
-            self.wfile.write(b"Unauthorized"); return
+                if prices:
+                    total_updated += _bulk_update_prices(conn, prices)
+                # small jitter between batches to avoid bursts
+                print("SAFETY WAIT: Sleeping")
+                time.sleep(random.uniform(SLEEP_MIN, SLEEP_MAX))
+                print("SAFETY WAIT: end")
+            conn.commit()
 
-        try:
-            total_updated = 0
-            with psycopg.connect(**DB_CONNECTION, **ssl_kwargs_from_env()) as conn:
-                codes = _load_codes(conn)
-                for batch in _batched(codes, BATCH_SIZE):
-                    prices = _fetch_batch_fast_prices(batch)   # lastPrice only
-                    if prices:
-                        total_updated += _bulk_update_prices(conn, prices)
-                    # small jitter between batches to avoid bursts
-                    time.sleep(random.uniform(SLEEP_MIN, SLEEP_MAX))
-                conn.commit()
+        print(f"OK updated={total_updated} shard={THIS_SHARD}/{SHARDS}")
+    except Exception as e:
+        print(f"ERR: {e}".encode())
+        print(e.args)
 
-            self.send_response(200); self.end_headers()
-            self.wfile.write(f"OK updated={total_updated} shard={THIS_SHARD}/{SHARDS}".encode())
-            print(f"OK updated={total_updated} shard={THIS_SHARD}/{SHARDS}")
-        except Exception as e:
-            self.send_response(500); self.end_headers()
-            self.wfile.write(f"ERR: {e}".encode())
-            print(f"ERR: {e}".encode())
+def test_update_public_assets():
+    conn = psycopg.connect(**DB_CONNECTION, autocommit=True)
+    try:
+        total_updated = 0
+        codes = _load_codes(conn)
+        conn.close()
+        for batch in _batched(codes, BATCH_SIZE):
+            prices = _fetch_batch_fast_prices(batch)   # lastPrice only
+
+            conn = psycopg.connect(**DB_CONNECTION)
+            if prices:
+                total_updated += test_bulk_update_prices(conn, prices)
+            # small jitter between batches to avoid bursts
+            print("SAFETY WAIT: Sleeping")
+            time.sleep(random.uniform(SLEEP_MIN, SLEEP_MAX))
+            print("SAFETY WAIT: end")
+            conn.commit()
+
+        print(f"OK updated={total_updated} shard={THIS_SHARD}/{SHARDS}")
+    except Exception as e:
+        print(f"ERR: {e}".encode())
+        print(e.args)
+    finally:
+        conn.close()
+
+
+
+if __name__ == "__main__":
+    #manual_update_public_assets()
+    test_update_public_assets()
