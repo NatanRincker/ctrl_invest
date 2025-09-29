@@ -9,7 +9,7 @@ beforeAll(async () => {
   await orchestrator.runPendingMigrations();
 });
 
-describe("GET to /api/v1/users/[email]", () => {
+describe("GET to /api/v1/asset_positions", () => {
   describe("Anonymous User", () => {
     test("with no session", async () => {
       const getResponse = await getAssetPositionsRequest({});
