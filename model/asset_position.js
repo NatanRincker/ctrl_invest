@@ -24,8 +24,8 @@ async function getUserAssetPositions(user_id) {
   });
   if (result.rowCount === 0) {
     throw new NotFoundError({
-      message: "No Asset Positions Found",
-      action: "Please, check if user input information",
+      message: "No Asset Positions Found For This User",
+      action: "Please, add an asset and try again.",
     });
   }
   return result.rows;
