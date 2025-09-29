@@ -11,7 +11,7 @@ exports.up = (pgm) => {
 
     code: { type: "varchar(64)", unique: true, notNull: true },
     name: { type: "varchar(200)", notNull: true },
-    description: { type: "char(200)" },
+    description: { type: "varchar(200)" },
     currency_code: { type: "char(3)", notNull: true },
 
     market_value: { type: "numeric(19,8)", notNull: true },
