@@ -73,8 +73,10 @@ export default function HomePage() {
   const handleLogout = async () => {
     try {
       await fetch("/api/v1/sessions", { method: "DELETE" });
-    } catch {}
-    router.replace("/login");
+      router.replace("/login");
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   return (
