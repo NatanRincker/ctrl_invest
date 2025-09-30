@@ -1,8 +1,9 @@
+import useLogout from "../../hooks/useLogout";
+
 export default function Header({
   username,
   loading = false,
   error = "",
-  onLogout,
   onToggleSidebar,
 }) {
   const label = loading
@@ -10,6 +11,7 @@ export default function Header({
     : error
       ? "Nome Não Carregado"
       : (username ?? "User");
+  const handleLogout = useLogout();
 
   return (
     <header className="sticky top-0 z-20 bg-gray-900/70 border-b border-gray-800 backdrop-blur">
@@ -33,7 +35,7 @@ export default function Header({
             {label}
           </span>
           <button
-            onClick={onLogout}
+            onClick={handleLogout}
             className="rounded-lg bg-emerald-800 hover:bg-emerald-700 px-4 py-2 text-sm font-medium"
           >
             Log out

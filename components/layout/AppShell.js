@@ -8,7 +8,6 @@ export default function AppShell({
   username,
   userLoading,
   userError,
-  onLogout,
 }) {
   const [open, setOpen] = useState(false);
 
@@ -18,7 +17,6 @@ export default function AppShell({
         username={username}
         loading={userLoading}
         error={userError}
-        onLogout={onLogout}
         onToggleSidebar={() => setOpen(true)}
       />
       <Sidebar open={open} onClose={() => setOpen(false)} />

@@ -52,7 +52,7 @@ export default function HomePage() {
             throw new Error(`HTTP ${r.status}`);
           }
         }
-        if (active) setPositions(data?.data || []);
+        if (active) setPositions(data || []);
       } catch (e) {
         if (active) setErr("Erro inexperado");
       } finally {
@@ -70,21 +70,11 @@ export default function HomePage() {
     [positions],
   );
 
-  const handleLogout = async () => {
-    try {
-      await fetch("/api/v1/sessions", { method: "DELETE" });
-      router.replace("/login");
-    } catch (error) {
-      console.log(error);
-    }
-  };
-
   return (
     <AppShell
       username={user?.username ?? user?.name}
       userLoading={userLoading}
       userError={userErr}
-      onLogout={handleLogout}
     >
       {/* Top row: total + add */}
       <div className="flex items-end justify-between gap-4 mb-4">
@@ -126,12 +116,12 @@ export default function HomePage() {
             <table className="min-w-full text-sm">
               <thead>
                 <tr className="bg-gray-900/80 text-gray-300">
-                  <Th>Asset Name</Th>
-                  <Th>Code</Th>
-                  <Th className="text-right">Quantity</Th>
-                  <Th className="text-right">Current Value</Th>
-                  <Th className="text-right">Total Value</Th>
-                  <Th className="text-right">Yield %</Th>
+                  <Th>Nome do Ativo</Th>
+                  <Th>Cód.</Th>
+                  <Th className="text-right">Quantidade</Th>
+                  <Th className="text-right">Valor atual</Th>
+                  <Th className="text-right">Valor Investido</Th>
+                  <Th className="text-right">Valorização %</Th>
                 </tr>
               </thead>
               <tbody>
@@ -149,12 +139,14 @@ export default function HomePage() {
                     <Td className="text-gray-400">{p.asset_code}</Td>
                     <Td className="text-right">{formatQuantity(p.quantity)}</Td>
                     <Td className="text-right">
-                      {formatCurrency(p.current_value, p.currency || "BRL")}
+                      {formatCurrency(calcCurrentVal(), p.currency || "BRL")}
                     </Td>
                     <Td className="text-right">
-                      {formatCurrency(p.total_value, p.currency || "BRL")}
+                      {formatCurrency(p.total_cost, p.currency || "BRL")}
                     </Td>
-                    <Td className="text-right">{formatPct(p.yield)}</Td>
+                    <Td className="text-right">
+                      {formatPct(calcReturnRate())}
+                    </Td>
                   </tr>
                 ))}
               </tbody>
@@ -207,3 +199,13 @@ function formatQuantity(q) {
 function guessCurrency(rows) {
   return rows?.[0]?.currency || "BRL";
 }
+function calcReturnRate(currentValue, originalValue) {
+  const curValNum = toNumber(currentValue);
+  const originalValNum = toNumber(originalValue);
+  return (curValNum - originalValNum) / originalValNum;
+}
+function calcCurrentVal(asset_code) {
+  return null;
+}
+
+const toNumber = (s) => (s === "" ? NaN : Number(s));

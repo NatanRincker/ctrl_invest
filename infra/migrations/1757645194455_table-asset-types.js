@@ -42,7 +42,9 @@ exports.up = (pgm) => {
       ('TESOURO_DIRETO', 'Tesouro Direto',                'Títulos públicos federais'),
       ('CRYPTO',         'Criptomoeada',                        'Criptomoedas'),
       ('BDR',            'BDR',                           'Brazilian Depositary Receipts'),
-      ('COMMODITY',      'Commodity',                     'Ouro, petróleo, e outras commodities')
+      ('COMMODITY',      'Commodity',                     'Ouro, petróleo, e outras commodities'),
+      ('REAL_STATE',      'Imóvel',                     'Casa, Apartamento, Prédio e outros.'),
+      ('VEHICLE',      'Veículo',                     'Carro, Moto, Caminhão, etc.')
     ON CONFLICT (code) DO NOTHING;
   `);
 };
