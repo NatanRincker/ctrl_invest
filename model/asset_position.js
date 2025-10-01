@@ -18,13 +18,38 @@ async function getUserAssetPositions(user_id) {
     SELECT *
     FROM asset_positions
     WHERE
-      user_id = $1
-    LIMIT 1;`,
+      user_id = $1;`,
     values: [user_id],
   });
   if (result.rowCount === 0) {
     throw new NotFoundError({
       message: "No Asset Positions Found For This User",
+      action: "Please, add an asset and try again.",
+    });
+  }
+  return result.rows;
+}
+
+async function getUserAssetPositionsSummary(user_id) {
+  const result = await database.query({
+    text: `
+    SELECT
+      p.user_id,
+      p.asset_id,
+      a.name, a.code, a.currency_code,
+      p.quantity, p.total_cost,
+      a.market_value * p.quantity AS total_market_value,
+      p.yield, p.realized_pnl
+    FROM asset_positions p
+    JOIN assets a ON a.id = p.asset_id
+    WHERE
+      p.user_id = $1;
+    `,
+    values: [user_id],
+  });
+  if (result.rowCount === 0) {
+    throw new NotFoundError({
+      message: "No Asset Position Summary to Return",
       action: "Please, add an asset and try again.",
     });
   }
@@ -199,6 +224,7 @@ function computeAssetPosition(position, transaction) {
 const asset_position = {
   handleNewTransaction,
   getUserAssetPositions,
+  getUserAssetPositionsSummary,
 };
 
 export default asset_position;

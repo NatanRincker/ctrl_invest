@@ -117,8 +117,8 @@ export default function NewAssetPage() {
     new Date().toISOString().slice(0, 10),
   ); // YYYY-MM-DD
 
-  const unitValueEnabled = Boolean(currencyCode) && !yfinCompat; // lock if yfinance true
-  const otherMoneyEnabled = Boolean(currencyCode);
+  //const unitValueEnabled = Boolean(currencyCode) && !yfinCompat; // lock if yfinance true
+  //const otherMoneyEnabled = Boolean(currencyCode);
 
   // ----------- Search public_assets -----------
   const [searching, setSearching] = useState(false);

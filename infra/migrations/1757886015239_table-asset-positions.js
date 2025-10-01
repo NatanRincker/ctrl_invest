@@ -18,7 +18,7 @@ exports.up = (pgm) => {
     total_cost: { type: "numeric(19,8)", notNull: true, default: 0 },
     avg_cost: { type: "numeric(19,8)", notNull: true, default: 0 },
     realized_pnl: { type: "numeric(19,8)", notNull: true, default: 0 },
-    yield: { type: "numeric(19,8)", notNull: true, default: 0 },
+    yield: { type: "numeric(19,8)", notNull: true, default: 0 }, //This should be ROI not yield
 
     created_date: {
       type: "timestamptz",
