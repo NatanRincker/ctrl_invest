@@ -246,7 +246,7 @@ export default function NewAssetPage() {
       const created = await r1.json();
       if (!r1.ok) {
         throw new Error(
-          created?.error || `Falha ao criar ativo (HTTP ${r1.status})`,
+          created?.error || `Falha ao criar novo ativo (HTTP ${r1.status})`,
         );
       }
 
