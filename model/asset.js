@@ -62,6 +62,11 @@ async function createUserAsset(assetInputValues, userId) {
   assertPriceValue("market_value", inserInputValues.market_value);
   assertPriceValue("paid_price", inserInputValues.paid_price);
   await assertValidReferences(inserInputValues);
+
+  if (inserInputValues.is_generic) {
+    await assertUniqueGenericAsset(inserInputValues);
+  }
+
   const result = await database.query({
     text: `
     INSERT into
@@ -96,6 +101,20 @@ async function createUserAsset(assetInputValues, userId) {
     ],
   });
   return result.rows[0];
+}
+
+async function assertUniqueGenericAsset(assetData) {
+  try {
+    await findUserAssetByCode(assetData.userId, assetData.code);
+    throw new ValidationError({
+      message: "Generic Asset Should Be Unique for user",
+      action: "Please, check user assets and try again",
+    });
+  } catch (error) {
+    if (!(error instanceof NotFoundError)) {
+      throw error;
+    }
+  }
 }
 
 function assertMandatoryKeys(obj) {
@@ -202,6 +221,26 @@ async function findAssetById(assetId) {
         id = $1
       LIMIT 1;`,
     values: [assetId],
+  });
+  if (result.rowCount === 0) {
+    throw new NotFoundError({
+      message: "Asset Not Found",
+      action: "Please, check if the Asset Data",
+    });
+  }
+  return result.rows[0];
+}
+
+async function findUserAssetByCode(user_id, asset_code) {
+  const result = await database.query({
+    text: `
+      SELECT *
+      FROM assets
+      WHERE
+        user_id = $1
+        and code = $2
+      LIMIT 1;`,
+    values: [user_id, asset_code],
   });
   if (result.rowCount === 0) {
     throw new NotFoundError({
