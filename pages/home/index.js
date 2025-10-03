@@ -219,7 +219,7 @@ export default function HomePage() {
                       key={p.asset_id}
                       onClick={() =>
                         router.push(
-                          `/position_details?assetId=${encodeURIComponent(p.asset_id)}`,
+                          `/position_details/${encodeURIComponent(p.asset_id)}`,
                         )
                       }
                       className="cursor-pointer hover:bg-gray-800/60"

@@ -73,6 +73,26 @@ async function findAssetPosition(asset_id, user_id) {
   return result.rows[0];
 }
 
+async function findUserAssetPositionById(position_id, user_id) {
+  const result = await database.query({
+    text: `
+      SELECT *
+      FROM asset_positions
+      WHERE
+        id = $1
+        AND user_id = $2
+      LIMIT 1;`,
+    values: [position_id, user_id],
+  });
+  if (result.rowCount === 0) {
+    throw new NotFoundError({
+      message: "Unable to locate Specidied Asset Position for This User",
+      acion: "Check asset position id",
+    });
+  }
+  return result.rows[0];
+}
+
 async function createAssetPosition(transactionObj) {
   console.log("createAssetPosition");
   console.log(transactionObj);
@@ -225,6 +245,7 @@ const asset_position = {
   handleNewTransaction,
   getUserAssetPositions,
   getUserAssetPositionsSummary,
+  findUserAssetPositionById,
 };
 
 export default asset_position;
