@@ -34,7 +34,7 @@ async function getUserAssetPositionsSummary(user_id) {
   const result = await database.query({
     text: `
     SELECT
-      p.user_id,
+      p.id,
       p.asset_id,
       a.name, a.code, a.currency_code,
       p.quantity, p.total_cost,
@@ -74,6 +74,9 @@ async function findAssetPosition(asset_id, user_id) {
 }
 
 async function findUserAssetPositionById(position_id, user_id) {
+  //console.log("position_id " + position_id);
+  //console.log("user_id " + user_id);
+
   const result = await database.query({
     text: `
       SELECT *
@@ -94,8 +97,6 @@ async function findUserAssetPositionById(position_id, user_id) {
 }
 
 async function createAssetPosition(transactionObj) {
-  console.log("createAssetPosition");
-  console.log(transactionObj);
   const quantity = new Decimal(transactionObj.quantity);
   const unitPrice = new Decimal(transactionObj.unit_price);
   const totalCost = quantity.times(unitPrice);

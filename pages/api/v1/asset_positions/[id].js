@@ -12,7 +12,8 @@ export default router.handler(controller.errorHandlers);
 async function getHandler(request, response) {
   const requestSessionToken = request.cookies.session_id;
   const sessionObj = await session.findOneValidByToken(requestSessionToken);
-  console.log(request.query.id);
+  console.log("request.query.id " + request.query.id);
+  console.log("sessionObj.user_id: " + sessionObj.user_id);
   if (sessionObj) {
     const publicAsset = await asset_position.findUserAssetPositionById(
       request.query.id,

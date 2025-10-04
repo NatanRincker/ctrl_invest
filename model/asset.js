@@ -251,7 +251,7 @@ async function findUserAssetByCode(user_id, asset_code) {
   return result.rows[0];
 }
 
-async function findUserAssetById(user_id, asset_id) {
+async function findUserAssetById(asset_id, user_id) {
   const result = await database.query({
     text: `
       SELECT *

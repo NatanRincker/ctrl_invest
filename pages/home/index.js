@@ -184,11 +184,11 @@ export default function HomePage() {
                   <Th>Nome do Ativo</Th>
                   <Th>Cód.</Th>
                   <Th className="text-right">Quantidade</Th>
-                  <Th className="text-right">Valor atual</Th>
                   <Th className="text-right">Valor Investido</Th>
-                  <Th className="text-right">Valorização %</Th>
-                  <Th className="text-right">ROI %</Th>
-                  <Th className="text-right">Preço/Lucro Realizado</Th>
+                  <Th className="text-right">Valor atual</Th>
+                  <Th className="text-right">Valorização</Th>
+                  <Th className="text-right">Lucro Líquido</Th>
+                  <Th className="text-right">Lucro Realizado</Th>
                 </tr>
               </thead>
               <tbody>
@@ -219,7 +219,7 @@ export default function HomePage() {
                       key={p.asset_id}
                       onClick={() =>
                         router.push(
-                          `/position_details/${encodeURIComponent(p.asset_id)}`,
+                          `/position_details/${encodeURIComponent(p.id)}`,
                         )
                       }
                       className="cursor-pointer hover:bg-gray-800/60"
@@ -230,14 +230,14 @@ export default function HomePage() {
                         {formatQuantity(p.quantity)}
                       </Td>
                       <Td className="text-right">
+                        {formatCurrency(p.total_cost, p.currency_code, symbol)}
+                      </Td>
+                      <Td className="text-right">
                         {formatCurrency(
                           p.total_market_value,
                           p.currency_code,
                           symbol,
                         )}
-                      </Td>
-                      <Td className="text-right">
-                        {formatCurrency(p.total_cost, p.currency_code, symbol)}
                       </Td>
                       <Td className={`text-right ${pctClass}`}>
                         {formatPct(pct)}

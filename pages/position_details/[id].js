@@ -328,8 +328,8 @@ export default function PositionDetailsPage() {
       const body = {
         asset_id: asset.id, // use internal asset id
         transaction_type_key: mode,
-        quantity: Number(qty),
-        unit_price: Number(unitPrice),
+        quantity: qty,
+        unit_price: unitPrice,
         description: txDesc || undefined,
         currency_code: asset.currency_code,
         occurred_date: occurredDate,
@@ -435,7 +435,7 @@ export default function PositionDetailsPage() {
                 <option value="">Selecione…</option>
                 {assetTypes.map((t) => (
                   <option key={t.code} value={t.code}>
-                    {t.code} — {t.name}
+                    {t.name} — {t.description}
                   </option>
                 ))}
               </select>
