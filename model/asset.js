@@ -19,6 +19,10 @@ async function update(assetInputValues) {
   assertPriceValue("market_value", updateInputValues.market_value);
   assertPriceValue("paid_price", updateInputValues.paid_price);
   await assertValidReferences(updateInputValues);
+  await assertAssetBelongsToUser(
+    updateInputValues.id,
+    updateInputValues.user_id,
+  );
 
   const result = await database.query({
     text: `

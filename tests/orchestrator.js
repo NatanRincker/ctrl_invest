@@ -80,8 +80,11 @@ async function createUserAsset(assetInputData, userId) {
 }
 
 async function getUserAssetPositions(user_id) {
-  console.log("getUserAssetPositions");
-  return await asset_position.getUserAssetPositions(user_id);
+  try {
+    return await asset_position.getUserAssetPositions(user_id);
+  } catch (e) {
+    return e;
+  }
 }
 
 async function createRandTransaction(inputData) {

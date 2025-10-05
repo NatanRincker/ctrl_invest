@@ -188,7 +188,7 @@ export default function HomePage() {
                   <Th className="text-right">Valor atual</Th>
                   <Th className="text-right">Valorização</Th>
                   <Th className="text-right">Lucro Líquido</Th>
-                  <Th className="text-right">Lucro Realizado</Th>
+                  <Th className="text-right">Lucro de Venda</Th>
                 </tr>
               </thead>
               <tbody>
@@ -198,21 +198,7 @@ export default function HomePage() {
                     p.total_cost,
                     p.total_market_value,
                   );
-                  const pctClass =
-                    pct > 0
-                      ? "text-emerald-400"
-                      : pct < 0
-                        ? "text-red-400"
-                        : "text-gray-300";
                   const symbol = currencyMap[p.currency_code];
-
-                  const roi = calcRoiPct(p.yield, p.total_cost);
-                  const roiClass =
-                    roi > 0
-                      ? "text-emerald-400"
-                      : roi < 0
-                        ? "text-red-400"
-                        : "text-gray-300";
 
                   return (
                     <tr
@@ -239,13 +225,17 @@ export default function HomePage() {
                           symbol,
                         )}
                       </Td>
-                      <Td className={`text-right ${pctClass}`}>
+                      <Td className={`text-right ${getPriceCollor(pct)}`}>
                         {formatPct(pct)}
                       </Td>
-                      <Td className={`text-right ${roiClass}`}>
-                        {formatPct(roi)}
+                      <Td
+                        className={`text-right ${getPriceCollor(toNumber(p.yield))}`}
+                      >
+                        {formatCurrency(p.yield, p.currency_code, symbol)}
                       </Td>
-                      <Td className="text-right">
+                      <Td
+                        className={`text-right ${getPriceCollor(toNumber(p.realized_pnl))}`}
+                      >
                         {formatCurrency(
                           p.realized_pnl,
                           p.currency_code,
@@ -325,12 +315,10 @@ function calcCurrentVal(invested_amount, current_val) {
   return (current - invested) / invested;
 }
 
-function calcRoiPct(raw_roi, invested_amount) {
-  const roi = toNumber(raw_roi);
-  const investment = toNumber(invested_amount);
-  if (!Number.isFinite(investment) || investment <= 0 || !Number.isFinite(roi))
-    return 0;
-  return roi / investment;
+function getPriceCollor(p) {
+  const cssClass =
+    p > 0 ? "text-emerald-400" : p < 0 ? "text-red-400" : "text-gray-300";
+  return cssClass;
 }
 
 const toNumber = (s) => (s === "" ? NaN : Number(s));

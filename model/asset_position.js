@@ -6,9 +6,9 @@ async function handleNewTransaction(transactionObj) {
   const { asset_id, user_id } = transactionObj;
   const positionToUpdate = await findAssetPosition(asset_id, user_id);
   if (positionToUpdate) {
-    updateAssetPosition(positionToUpdate, transactionObj);
+    await updateAssetPosition(positionToUpdate, transactionObj);
   } else {
-    createAssetPosition(transactionObj);
+    await createAssetPosition(transactionObj);
   }
 }
 
@@ -207,7 +207,9 @@ function computeAssetPosition(position, transaction) {
       updatedRealizedPnL = delta.times(transactionQuantity);
     }
 
-    const updatedAvgCost = updatedTotalCost.div(updatedQuantity);
+    const updatedAvgCost = updatedQuantity.equals(0)
+      ? 0
+      : updatedTotalCost.div(updatedQuantity);
 
     return {
       ...position,

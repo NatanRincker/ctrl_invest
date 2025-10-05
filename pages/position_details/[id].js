@@ -7,6 +7,7 @@ export default function PositionDetailsPage() {
   const router = useRouter();
   const { id } = router.query; // public UUID for asset_position
   const isReady = router.isReady;
+  const [pageRefreshFlag, setPageRefreshFlag] = useState(false);
 
   /* ---------------- User (topbar) ---------------- */
   const [user, setUser] = useState(null);
@@ -42,7 +43,7 @@ export default function PositionDetailsPage() {
   const [assetLoading, setAssetLoading] = useState(false);
   const [assetError, setAssetError] = useState("");
 
-  const [currencies, setCurrencies] = useState([]); // [{code,name,symbol}]
+  //const [currencies, setCurrencies] = useState([]); // [{code,name,symbol}]
   const [currencyMap, setCurrencyMap] = useState({}); // code -> symbol
   const [curLoading, setCurLoading] = useState(true);
 
@@ -70,7 +71,7 @@ export default function PositionDetailsPage() {
           symbol,
         }));
         if (alive) {
-          setCurrencies(cleaned);
+          //setCurrencies(cleaned);
           setCurrencyMap(
             Object.fromEntries(cleaned.map((c) => [c.code, c.symbol])),
           );
@@ -115,7 +116,7 @@ export default function PositionDetailsPage() {
     return () => {
       alive = false;
     };
-  }, [isReady, id, router]);
+  }, [isReady, id, router, pageRefreshFlag]);
 
   /* ---------------- Load asset (after position), asset types (if needed), tx history ---------------- */
   useEffect(() => {
@@ -145,7 +146,7 @@ export default function PositionDetailsPage() {
       try {
         setTxLoading(true);
         const r = await fetch(
-          `/api/v1/transactions/${encodeURIComponent(position.asset_id)}`,
+          `/api/v1/transactions/asset_id/${encodeURIComponent(position.asset_id)}`,
           {
             credentials: "include",
           },
@@ -235,12 +236,24 @@ export default function PositionDetailsPage() {
   const [assetTypeCode, setAssetTypeCode] = useState("");
   const [desc, setDesc] = useState("");
 
-  // Initialize editable fields when asset loads
+  // NEW: editable market value input (for non-yfinance)
+  const [unitMarketInput, setUnitMarketInput] = useState("");
+
+  // Initialize editable fields when asset loads/refreshed changes
   useEffect(() => {
     if (!asset) return;
     setName(asset.name || "");
     setAssetTypeCode(asset.asset_type_code || "");
     setDesc(asset.description || "");
+    // Only initialize input from asset when NOT yfinance
+    if (!asset.yfinance_compatible) {
+      const base = asset.market_value ?? "";
+      setUnitMarketInput(
+        base === null || base === undefined ? "" : String(base),
+      );
+    } else {
+      setUnitMarketInput(""); // yfinance: field is not editable/shown as input
+    }
   }, [asset]);
 
   const currentUnitMarket = useMemo(() => {
@@ -249,15 +262,28 @@ export default function PositionDetailsPage() {
     return Number(asset?.market_value) || 0;
   }, [asset?.market_value, refreshedMarket]);
 
+  // Use editable input when not yfinance, otherwise the computed current value
+  const effectiveUnitMarket = !yfinCompat
+    ? Number(unitMarketInput || 0)
+    : currentUnitMarket;
+
   const totalMarketValue =
-    (Number(position?.quantity) || 0) * currentUnitMarket;
+    (Number(position?.quantity) || 0) *
+    (Number.isFinite(effectiveUnitMarket) ? effectiveUnitMarket : 0);
+
+  // Dirty checks
+  const priceDirty =
+    !!asset &&
+    !yfinCompat &&
+    Number(unitMarketInput) !== Number(asset.market_value || 0);
 
   const dirty =
     (!!asset && !yfinCompat && name !== (asset.name || "")) ||
     (!!asset &&
       !yfinCompat &&
       assetTypeCode !== (asset.asset_type_code || "")) ||
-    (!!asset && desc !== (asset.description || ""));
+    (!!asset && desc !== (asset.description || "")) ||
+    priceDirty;
 
   const [saving, setSaving] = useState(false);
   const [saveErr, setSaveErr] = useState("");
@@ -269,19 +295,25 @@ export default function PositionDetailsPage() {
     setSaveOk("");
     try {
       setSaving(true);
-      const body = {};
+      const body = { id: asset.id };
       if (!yfinCompat) {
         if (name !== asset.name) body.name = name;
         if (assetTypeCode !== asset.asset_type_code)
           body.asset_type_code = assetTypeCode;
+        if (priceDirty) {
+          const mv = Number(unitMarketInput);
+          if (!Number.isFinite(mv)) throw new Error("Valor unitário inválido.");
+          body.market_value = mv.toString();
+        }
       }
       if (desc !== asset.description) body.description = desc;
 
-      if (!Object.keys(body).length) {
+      if (Object.keys(body).length <= 1) {
         setSaveOk("Nada para salvar.");
         return;
       }
-      const r = await fetch(`/api/v1/assets/${encodeURIComponent(asset.id)}`, {
+      // Spec: PATCH /api/v1/assets  (body contains { id, ...fields })
+      const r = await fetch(`/api/v1/assets`, {
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -291,8 +323,25 @@ export default function PositionDetailsPage() {
       if (!r.ok)
         throw new Error(data?.error || `Falha ao salvar (HTTP ${r.status})`);
       setSaveOk("Alterações salvas com sucesso.");
-      // update local asset baseline
-      setAsset((prev) => (prev ? { ...prev, ...body } : prev));
+
+      // update local asset baseline (keeps UI in sync and clears dirty)
+      setAsset((prev) =>
+        prev
+          ? {
+              ...prev,
+              ...("name" in body ? { name: body.name } : {}),
+              ...("asset_type_code" in body
+                ? { asset_type_code: body.asset_type_code }
+                : {}),
+              ...("description" in body
+                ? { description: body.description }
+                : {}),
+              ...("market_value" in body
+                ? { market_value: body.market_value }
+                : {}),
+            }
+          : prev,
+      );
     } catch (e) {
       setSaveErr(e.message || "Erro ao salvar.");
     } finally {
@@ -301,7 +350,7 @@ export default function PositionDetailsPage() {
   }
 
   /* ---------------- New Transaction ---------------- */
-  const [mode, setMode] = useState("BUY"); // BUY | SELL | REVENUE | EXPENSE
+  const [mode, setMode] = useState("BUY"); // BUY | SELL | INCOME | EXPENSE
   const [qty, setQty] = useState("");
   const [unitPrice, setUnitPrice] = useState("");
   const [occurredDate, setOccurredDate] = useState(() =>
@@ -343,6 +392,8 @@ export default function PositionDetailsPage() {
       const data = await safeJson(r);
       if (!r.ok) throw new Error(data?.error || `Erro (${r.status})`);
 
+      //refresh asset_position
+      setPageRefreshFlag(!pageRefreshFlag);
       // refresh history
       const h = await fetch(
         `/api/v1/transactions/${encodeURIComponent(asset.id)}`,
@@ -457,7 +508,7 @@ export default function PositionDetailsPage() {
             />
           </div>
 
-          {/* Save changes button (only if dirty) */}
+          {/* Save changes button (only if dirty — includes priceDirty) */}
           {(dirty || saveErr || saveOk) && (
             <div className="mt-3 flex items-center justify-between">
               <div className="text-sm">
@@ -475,18 +526,65 @@ export default function PositionDetailsPage() {
           )}
         </section>
 
-        {/* Read-only metrics */}
+        {/* Metrics (now with editable "Valor Unitário de Mercado" when NOT yfinance) */}
         <section className="bg-gray-900/60 border border-gray-800 rounded-xl p-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Stat label="Quantidade" value={formatNumber(position?.quantity)} />
             <Stat
-              label="Valor Unitário de Mercado"
+              label="Custo Unitário"
               value={formatMoney(
-                currentUnitMarket,
+                toNumber(position?.total_cost) / toNumber(position?.quantity),
                 asset?.currency_code,
                 currencySymbol,
               )}
             />
+            {/* Editable when NOT yfinance */}
+            {!yfinCompat ? (
+              <div className="bg-gray-900/70 border border-gray-800 rounded-lg p-4">
+                <div className="text-xs text-gray-400 mb-1">
+                  Valor Unitário de Mercado
+                </div>
+                <div className="relative">
+                  <input
+                    type="number"
+                    step="any"
+                    value={unitMarketInput}
+                    onChange={(e) => setUnitMarketInput(e.target.value)}
+                    disabled={loadingAny}
+                    className="w-full rounded-lg bg-gray-800 border border-gray-700 p-3 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                    placeholder="0.00"
+                  />
+                  {currencySymbol ? (
+                    <span className="absolute inset-y-0 right-3 flex items-center text-gray-400 text-sm">
+                      {currencySymbol}
+                    </span>
+                  ) : null}
+                </div>
+
+                {/* Inline save hint for price change (also covered by global Save CTA) */}
+                {priceDirty && (
+                  <div className="mt-2 flex items-center justify-end">
+                    <button
+                      onClick={handleSave}
+                      disabled={saving || loadingAny}
+                      className="rounded-md bg-emerald-800 hover:bg-emerald-700 disabled:opacity-60 px-3 py-1 text-xs font-medium"
+                    >
+                      {saving ? "Salvando…" : "Salvar valor"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Stat
+                label="Valor Unitário de Mercado"
+                value={formatMoney(
+                  currentUnitMarket,
+                  asset?.currency_code,
+                  currencySymbol,
+                )}
+              />
+            )}
+
             <Stat
               label="Valor Total de Mercado"
               value={formatMoney(
@@ -508,7 +606,9 @@ export default function PositionDetailsPage() {
                   <Help title="Fórmula: Lucro Líquido = Receitas - Despesas" />
                 </div>
                 <div
-                  className={`mt-1 text-lg font-semibold ${pnlClass(position?.yield || 0)}`}
+                  className={`mt-1 text-lg font-semibold ${pnlClass(
+                    position?.yield || 0,
+                  )}`}
                 >
                   {formatMoney(
                     position?.yield || 0,
@@ -520,11 +620,15 @@ export default function PositionDetailsPage() {
 
               <div className="bg-gray-900/70 border border-gray-800 rounded-lg p-4">
                 <div className="flex items-center gap-2">
-                  <div className="text-sm text-gray-400">Lucro Realizado</div>
+                  <div className="text-sm text-gray-400">
+                    Lucro Realizado de Venda
+                  </div>
                   <Help title="Calcula o lucro líquido de operações de venda do ativo com base no preço médio. Se negativo, indica prejuízo nas vendas realizadas" />
                 </div>
                 <div
-                  className={`mt-1 text-lg font-semibold ${pnlClass(position?.realized_pnl || 0)}`}
+                  className={`mt-1 text-lg font-semibold ${pnlClass(
+                    position?.realized_pnl || 0,
+                  )}`}
                 >
                   {formatMoney(
                     position?.realized_pnl || 0,
@@ -543,7 +647,7 @@ export default function PositionDetailsPage() {
             {[
               { key: "BUY", label: "Comprar" },
               { key: "SELL", label: "Vender" },
-              { key: "REVENUE", label: "Informar Receita" },
+              { key: "INCOME", label: "Informar Receita" },
               { key: "EXPENSE", label: "Informar Despesa" },
             ].map((b) => (
               <button
@@ -638,7 +742,6 @@ export default function PositionDetailsPage() {
                       {labelForType(t.transaction_type_key)}
                     </span>
                     <span className="text-xs text-gray-400">
-                      {t.currency_code} —{" "}
                       {formatMoney(
                         t.unit_price,
                         t.currency_code,
@@ -754,13 +857,16 @@ function pickNumber(v) {
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 }
+
+const toNumber = (s) => (s === "" ? NaN : Number(s));
+
 function labelForType(k) {
   switch (k) {
     case "BUY":
       return "Compra";
     case "SELL":
       return "Venda";
-    case "REVENUE":
+    case "INCOME":
       return "Receita";
     case "EXPENSE":
       return "Despesa";

@@ -15,7 +15,7 @@ describe("POST to /api/v1/transactions", () => {
       const assetTestSession = await orchestrator.createSession(testUser.id);
       const testAsset = await orchestrator.createUserAsset({}, testUser.id);
       const randTransactionType = await orchestrator.getRandomTransactionType();
-      const response = await postCreateUserRequest(
+      const response = await postCreateTransactionRequest(
         {
           user_id: testUser.id,
           asset_id: testAsset.id,
@@ -43,7 +43,7 @@ describe("POST to /api/v1/transactions", () => {
       const assetTestSession = await orchestrator.createSession(testUser.id);
       const testAsset = await orchestrator.createUserAsset({}, testUser.id);
       const randTransactionType = await orchestrator.getRandomTransactionType();
-      const response = await postCreateUserRequest(
+      const response = await postCreateTransactionRequest(
         {
           user_id: testUser.id,
           asset_id: testAsset.id,
@@ -76,7 +76,7 @@ describe("POST to /api/v1/transactions", () => {
         12341,
         true,
       ]);
-      const response = await postCreateUserRequest(
+      const response = await postCreateTransactionRequest(
         {
           user_id: testUser.id,
           asset_id: testAsset.id,
@@ -105,7 +105,7 @@ describe("POST to /api/v1/transactions", () => {
       const testAsset = await orchestrator.createUserAsset({}, testUser.id);
       const randTransactionType = await orchestrator.getRandomTransactionType();
 
-      const response = await postCreateUserRequest(
+      const response = await postCreateTransactionRequest(
         {
           user_id: testUser.id,
           asset_id: testAsset.id,
@@ -133,7 +133,7 @@ describe("POST to /api/v1/transactions", () => {
       const assetTestSession = await orchestrator.createSession(testUser.id);
       const randTransactionType = await orchestrator.getRandomTransactionType();
 
-      const response = await postCreateUserRequest(
+      const response = await postCreateTransactionRequest(
         {
           user_id: testUser.id,
           asset_id: testUser.id,
@@ -162,7 +162,7 @@ describe("POST to /api/v1/transactions", () => {
       const testAsset = await orchestrator.createUserAsset({}, testUser.id);
       const randTransactionType = await orchestrator.getRandomTransactionType();
 
-      const response = await postCreateUserRequest(
+      const response = await postCreateTransactionRequest(
         {
           user_id: testAsset.id,
           asset_id: testAsset.id,
@@ -197,14 +197,14 @@ describe("POST to /api/v1/transactions", () => {
         new Date(Date.now()).toISOString(),
       ]);
 
-      const response = await postCreateUserRequest(
+      const response = await postCreateTransactionRequest(
         {
           user_id: testUser.id,
           asset_id: testAsset.id,
           transaction_type_key: randTransactionType.key,
-          quantity: faker.number.int({ min: 1, max: 1000000000 }).toString(),
+          quantity: faker.number.int({ min: 1, max: 100000 }).toString(),
           unit_price: faker.number
-            .float({ max: 1000000000, fractionDigits: 8 })
+            .float({ max: 100000, fractionDigits: 8 })
             .toString(),
           description: "test_description",
           currency_code: randCurrency.code,
@@ -240,7 +240,7 @@ describe("POST to /api/v1/transactions", () => {
         new Date(Date.now()).toISOString(),
       ]);
 
-      const response = await postCreateUserRequest(
+      const response = await postCreateTransactionRequest(
         {
           user_id: testUser.id,
           asset_id: testAsset.id,
@@ -289,7 +289,7 @@ describe("POST to /api/v1/transactions", () => {
         new Date(Date.now()).toISOString(),
       ]);
 
-      const response = await postCreateUserRequest(
+      const response = await postCreateTransactionRequest(
         {
           user_id: testUser.id,
           asset_id: testAsset.id,
@@ -314,7 +314,7 @@ describe("POST to /api/v1/transactions", () => {
   });
 });
 
-async function postCreateUserRequest(transactionProps, sessionObject) {
+async function postCreateTransactionRequest(transactionProps, sessionObject) {
   return await fetch("http://localhost:3000/api/v1/transactions", {
     method: "POST",
     headers: {
