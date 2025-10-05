@@ -14,10 +14,7 @@ export default function Sidebar({ open, onClose }) {
     return () => document.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  const nav = [
-    { href: "/home", label: "Home" },
-    { href: "/transactions", label: "Histórico de Transações" },
-  ];
+  const nav = [{ href: "/home", label: "Home" }];
 
   return (
     <>

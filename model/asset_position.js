@@ -6,9 +6,9 @@ async function handleNewTransaction(transactionObj) {
   const { asset_id, user_id } = transactionObj;
   const positionToUpdate = await findAssetPosition(asset_id, user_id);
   if (positionToUpdate) {
-    updateAssetPosition(positionToUpdate, transactionObj);
+    await updateAssetPosition(positionToUpdate, transactionObj);
   } else {
-    createAssetPosition(transactionObj);
+    await createAssetPosition(transactionObj);
   }
 }
 
@@ -34,7 +34,7 @@ async function getUserAssetPositionsSummary(user_id) {
   const result = await database.query({
     text: `
     SELECT
-      p.user_id,
+      p.id,
       p.asset_id,
       a.name, a.code, a.currency_code,
       p.quantity, p.total_cost,
@@ -73,9 +73,30 @@ async function findAssetPosition(asset_id, user_id) {
   return result.rows[0];
 }
 
+async function findUserAssetPositionById(position_id, user_id) {
+  //console.log("position_id " + position_id);
+  //console.log("user_id " + user_id);
+
+  const result = await database.query({
+    text: `
+      SELECT *
+      FROM asset_positions
+      WHERE
+        id = $1
+        AND user_id = $2
+      LIMIT 1;`,
+    values: [position_id, user_id],
+  });
+  if (result.rowCount === 0) {
+    throw new NotFoundError({
+      message: "Unable to locate Specidied Asset Position for This User",
+      acion: "Check asset position id",
+    });
+  }
+  return result.rows[0];
+}
+
 async function createAssetPosition(transactionObj) {
-  console.log("createAssetPosition");
-  console.log(transactionObj);
   const quantity = new Decimal(transactionObj.quantity);
   const unitPrice = new Decimal(transactionObj.unit_price);
   const totalCost = quantity.times(unitPrice);
@@ -186,7 +207,9 @@ function computeAssetPosition(position, transaction) {
       updatedRealizedPnL = delta.times(transactionQuantity);
     }
 
-    const updatedAvgCost = updatedTotalCost.div(updatedQuantity);
+    const updatedAvgCost = updatedQuantity.equals(0)
+      ? 0
+      : updatedTotalCost.div(updatedQuantity);
 
     return {
       ...position,
@@ -225,6 +248,7 @@ const asset_position = {
   handleNewTransaction,
   getUserAssetPositions,
   getUserAssetPositionsSummary,
+  findUserAssetPositionById,
 };
 
 export default asset_position;

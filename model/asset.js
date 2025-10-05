@@ -19,6 +19,10 @@ async function update(assetInputValues) {
   assertPriceValue("market_value", updateInputValues.market_value);
   assertPriceValue("paid_price", updateInputValues.paid_price);
   await assertValidReferences(updateInputValues);
+  await assertAssetBelongsToUser(
+    updateInputValues.id,
+    updateInputValues.user_id,
+  );
 
   const result = await database.query({
     text: `
@@ -251,9 +255,30 @@ async function findUserAssetByCode(user_id, asset_code) {
   return result.rows[0];
 }
 
+async function findUserAssetById(asset_id, user_id) {
+  const result = await database.query({
+    text: `
+      SELECT *
+      FROM assets
+      WHERE
+        user_id = $1
+        and id = $2
+      LIMIT 1;`,
+    values: [user_id, asset_id],
+  });
+  if (result.rowCount === 0) {
+    throw new NotFoundError({
+      message: "Asset Not Found",
+      action: "Please, check if the Asset Data",
+    });
+  }
+  return result.rows[0];
+}
+
 const asset = {
   createUserAsset,
   update,
   assertAssetBelongsToUser,
+  findUserAssetById,
 };
 export default asset;

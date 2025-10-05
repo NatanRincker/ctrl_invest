@@ -8,6 +8,7 @@ import asset_type from "model/asset_type";
 import currency from "model/currency";
 import asset from "model/asset";
 import transaction from "model/transaction";
+import asset_position from "model/asset_position";
 
 async function waitForAllServices() {
   await waitForWebServer();
@@ -78,6 +79,14 @@ async function createUserAsset(assetInputData, userId) {
   );
 }
 
+async function getUserAssetPositions(user_id) {
+  try {
+    return await asset_position.getUserAssetPositions(user_id);
+  } catch (e) {
+    return e;
+  }
+}
+
 async function createRandTransaction(inputData) {
   const testUser = inputData.testUser || (await createUser({}));
   const testAsset =
@@ -140,6 +149,7 @@ const orchestrator = {
   getRandomAssetType,
   getRandomCurrency,
   getRandomTransactionType,
+  getUserAssetPositions,
 };
 
 export default orchestrator;

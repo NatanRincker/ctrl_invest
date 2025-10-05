@@ -17,7 +17,7 @@ export default function NewAssetPage() {
     (async () => {
       try {
         setUserLoading(true);
-        const r = await fetch("/api/v1/me", { credentials: "include" });
+        const r = await fetch("/api/v1/user", { credentials: "include" });
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const data = await r.json();
         if (active) setUser(data);
