@@ -33,14 +33,14 @@ export default function AuthPage() {
   // --- Sign Up ---
   const validateSignup = () => {
     const errors = {};
-    if (!name.trim()) errors.name = "Name is required.";
-    if (!email.trim()) errors.email = "Email is required.";
-    else if (!isValidEmail(email)) errors.email = "Enter a valid email.";
-    if (!password) errors.password = "Password is required.";
+    if (!name.trim()) errors.name = "Nome é obrigatório.";
+    if (!email.trim()) errors.email = "Email é obrigatório.";
+    else if (!isValidEmail(email)) errors.email = "Informe um Email Válido.";
+    if (!password) errors.password = "Senha é obrigatória.";
     else if (password.length < 8)
-      errors.password = "Password must have at least 8 characters.";
+      errors.password = "Senha deve conter pelo menos 8 caractéres.";
     if (password !== confirmPassword)
-      errors.confirmPassword = "Passwords need to match";
+      errors.confirmPassword = "Senhas precisam ser iguais";
     return errors;
   };
 
@@ -73,7 +73,7 @@ export default function AuthPage() {
         setConfirmPassword("");
       } else {
         const data = await safeJson(res);
-        setSignupError(data?.error || `Sign up failed (HTTP ${res.status}).`);
+        setSignupError(data?.error || `Sign up Falhou (HTTP ${res.status}).`);
       }
     } catch (_err) {
       setSignupError("Network error. Please try again.");
@@ -85,9 +85,10 @@ export default function AuthPage() {
   // --- Login ---
   const validateLogin = () => {
     const errors = {};
-    if (!loginEmail.trim()) errors.email = "Email is required.";
-    else if (!isValidEmail(loginEmail)) errors.email = "Enter a valid email.";
-    if (!loginPassword) errors.password = "Password is required.";
+    if (!loginEmail.trim()) errors.email = "Email é obrigatório.";
+    else if (!isValidEmail(loginEmail))
+      errors.email = "Informe um Email válido.";
+    if (!loginPassword) errors.password = "Senha é obrigatório.";
     return errors;
   };
 
@@ -114,7 +115,7 @@ export default function AuthPage() {
         router.push("/home");
       } else {
         const data = await safeJson(res);
-        setLoginError(data?.error || "Invalid credentials.");
+        setLoginError(data?.error || "Credenciais inválidas.");
       }
     } catch (_err) {
       setLoginError("Network error. Please try again.");
@@ -127,10 +128,12 @@ export default function AuthPage() {
     <div className="min-h-screen bg-[#0b0f0e] text-gray-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="mb-6 text-center">
-          <h1 className="text-2xl font-semibold">Welcome to</h1>
-          <h1 className="text-5xl font-semibold">ctrl_invest</h1>
+          <h1 className="text-6xl font-semibold p-4">ctrl_invest</h1>
+          <h1 className="text-2xl font-semibold">
+            Cuide dos seus ativos e investimentos
+          </h1>
           <p className="text-gray-400 text-sm pt-10">
-            Sign in to create your account or log in to continue.
+            Faça seu login para continuar, ou crie uma conta em sign up
           </p>
         </div>
 
@@ -169,7 +172,7 @@ export default function AuthPage() {
               <form onSubmit={handleSignup} className="space-y-4" noValidate>
                 {signupSuccess && (
                   <div className="text-sm rounded-lg border border-emerald-700/50 bg-emerald-900/20 p-3">
-                    ✅ User has been created successfully.
+                    ✅ Usuário Criado com Sucesso.
                   </div>
                 )}
                 {signupError && (
@@ -178,7 +181,7 @@ export default function AuthPage() {
                   </div>
                 )}
                 {formInputField({
-                  name: "Name",
+                  name: "Nome",
                   id: "name",
                   stateVar: name,
                   onChange: setName,
@@ -196,25 +199,25 @@ export default function AuthPage() {
                   autoComplete: "email",
                 })}
                 {formInputField({
-                  name: "New Password",
+                  name: "Nova Senha",
                   id: "password",
                   stateVar: password,
                   onChange: setPassword,
                   showPasswordOnClick: setShowPassword,
                   showPassword: showPassword,
                   inputType: "password",
-                  placeholder: "Must Have at least 8 Charachters",
+                  placeholder: "Mínimo de 8 Caracteres",
                   autoComplete: "new-password",
                 })}
                 {formInputField({
-                  name: "Confirm Password",
+                  name: "Confirme a Senha",
                   id: "confirm_password",
                   stateVar: confirmPassword,
                   onChange: setConfirmPassword,
                   showPasswordOnClick: setShowConfirmPassword,
                   showPassword: showConfirmPassword,
                   inputType: "password",
-                  placeholder: "insert the same password",
+                  placeholder: "insira a mesma senha",
                   autoComplete: "off",
                 })}
                 <button
@@ -222,7 +225,7 @@ export default function AuthPage() {
                   disabled={signingUp}
                   className="w-full rounded-lg bg-emerald-800 hover:bg-emerald-700 disabled:opacity-70 disabled:cursor-not-allowed transition-colors p-3 text-sm font-medium"
                 >
-                  {signingUp ? "Creating account…" : "Create account"}
+                  {signingUp ? "Criando sua conta…" : "Criar Conta"}
                 </button>
               </form>
             ) : (
@@ -242,7 +245,7 @@ export default function AuthPage() {
                   autoComplete: "email",
                 })}
                 {formInputField({
-                  name: "Password",
+                  name: "Senha",
                   id: "loginPassword",
                   stateVar: loginPassword,
                   onChange: setLoginPassword,
@@ -257,7 +260,7 @@ export default function AuthPage() {
                   disabled={loggingIn}
                   className="w-full rounded-lg bg-emerald-800 hover:bg-emerald-700 disabled:opacity-70 disabled:cursor-not-allowed transition-colors p-3 text-sm font-medium"
                 >
-                  {loggingIn ? "Signing in…" : "Log in"}
+                  {loggingIn ? "Entrando…" : "Log in"}
                 </button>
               </form>
             )}
@@ -305,9 +308,9 @@ function formInputField(fieldValues) {
           type="button"
           onClick={() => fieldValues.showPasswordOnClick((s) => !s)}
           className="absolute inset-y-0 right-0 px-3 text-xs text-gray-300 hover:text-white"
-          aria-label={fieldValues.stateVar ? "Hide password" : "Show password"}
+          aria-label={fieldValues.stateVar ? "Esconder Senha" : "Mostrar Senha"}
         >
-          {fieldValues.showPassword ? "Hide" : "Show"}
+          {fieldValues.showPassword ? "Esconder" : "Mostrar"}
         </button>
       );
     }

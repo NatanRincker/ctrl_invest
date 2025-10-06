@@ -458,16 +458,6 @@ export default function NewAssetPage() {
           {/* Monetary values */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <MonetaryField
-              id="unitValue"
-              label="Valor Unitário Atual"
-              value={unitValue}
-              onChange={setUnitValue}
-              currencySymbol={currencySymbol}
-              enabled={Boolean(currencyCode) && !yfinCompat}
-              placeholder="0.00"
-              required={!yfinCompat}
-            />
-            <MonetaryField
               id="quantity"
               label="Quantidade"
               value={quantity}
@@ -479,13 +469,23 @@ export default function NewAssetPage() {
             />
             <MonetaryField
               id="costUnit"
-              label="Custo Unitário"
+              label="Custo Unitário (quanto foi pago)"
               value={costUnit}
               onChange={setCostUnit}
               currencySymbol={currencySymbol}
               enabled={Boolean(currencyCode)}
               placeholder="0.00"
               required
+            />
+            <MonetaryField
+              id="unitValue"
+              label="Valor Unitário Atual"
+              value={unitValue}
+              onChange={setUnitValue}
+              currencySymbol={currencySymbol}
+              enabled={Boolean(currencyCode) && !yfinCompat}
+              placeholder="0.00"
+              required={!yfinCompat}
             />
           </div>
 

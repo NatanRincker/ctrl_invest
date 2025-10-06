@@ -371,7 +371,7 @@ export default function PositionDetailsPage() {
     try {
       if (!asset?.id) throw new Error("Ativo não carregado.");
       if (!qty || !unitPrice)
-        throw new Error("Preencha quantidade e preço unitário.");
+        throw new Error("Preencha quantidade e valor unitário.");
       setTxSubmitting(true);
       setTxErr("");
       const body = {
@@ -673,7 +673,7 @@ export default function PositionDetailsPage() {
               placeholder="0"
             />
             <Field
-              label="Preço Unitário"
+              label="Valor Unitário"
               value={unitPrice}
               onChange={setUnitPrice}
               type="number"

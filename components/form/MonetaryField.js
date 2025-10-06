@@ -66,9 +66,6 @@ export default function MonetaryField({
           {currencySymbol || "—"}
         </span>
       </div>
-      <p className="text-xs text-gray-500 mt-1">
-        até {maxDecimals} casas decimais
-      </p>
     </div>
   );
 }
