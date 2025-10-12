@@ -44,7 +44,9 @@ exports.up = (pgm) => {
       ('BDR',            'BDR',                           'Brazilian Depositary Receipts'),
       ('COMMODITY',      'Commodity',                     'Ouro, petróleo, e outras commodities'),
       ('REAL_STATE',      'Imóvel',                     'Casa, Apartamento, Prédio e outros.'),
-      ('VEHICLE',      'Veículo',                     'Carro, Moto, Caminhão, etc.')
+      ('VEHICLE',      'Veículo',                     'Carro, Moto, Caminhão, etc.'),
+      ('ELECTRONICS',      'Eletrônico',                     'Computador, TV, Celular, etc.'),
+      ('HOME_APPLIANCE',      'ELetrodoméstico',                     'Geladeira, Micro-ondas, etc.')
     ON CONFLICT (code) DO NOTHING;
   `);
 };

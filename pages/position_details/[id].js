@@ -2,8 +2,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import AppShell from "../../components/layout/AppShell";
+import { apiGet } from "../../infra/clientController";
 
-export default function PositionDetailsPage() {
+export default function PositionDetailsPage({
+  ssrMarket = null,
+  //ssrAt = null,
+}) {
   const router = useRouter();
   const { id } = router.query; // public UUID for asset_position
   const isReady = router.isReady;
@@ -53,8 +57,10 @@ export default function PositionDetailsPage() {
   const [transactions, setTransactions] = useState([]);
   const [txLoading, setTxLoading] = useState(false);
 
-  // yfinance refresh (client-only best effort)
-  const [refreshedMarket, setRefreshedMarket] = useState(null);
+  // yfinance refresh (SSR seeds initial market value; client may update later)
+  const [refreshedMarket] = useState(
+    Number.isFinite(Number(ssrMarket)) ? Number(ssrMarket) : null,
+  );
 
   /* ---------------- Load currencies (once) ---------------- */
   useEffect(() => {
@@ -164,7 +170,7 @@ export default function PositionDetailsPage() {
     };
   }, [position?.asset_id]);
 
-  /* ---------------- If asset is yfinance-compatible, refresh its market value by code ---------------- */
+  /* ---------------- If asset is yfinance-compatible, refresh its market value by code
   useEffect(() => {
     if (!asset?.yfinance_compatible || !asset?.code) {
       setRefreshedMarket(null);
@@ -200,6 +206,7 @@ export default function PositionDetailsPage() {
       alive = false;
     };
   }, [asset?.yfinance_compatible, asset?.code]);
+  ----------------*/
 
   /* ---------------- Load asset types if NOT yfinance (for dropdown) ---------------- */
   useEffect(() => {
@@ -765,6 +772,94 @@ export default function PositionDetailsPage() {
   );
 }
 
+export async function getServerSideProps(ctx) {
+  console.log("getServerSideProps");
+  const { req, res, params } = ctx;
+  const id = params?.id;
+  if (!id) {
+    return { props: { ssrMarket: null, ssrAt: null } };
+  }
+
+  // --- Derive origin that works on both Prod (HTTPS) and Dev (HTTP) ---
+  // Priority: explicit env -> x-forwarded headers -> dev fallback
+  const origin =
+    process.env.NODE_ENV === "production"
+      ? "https://" +
+          (req.headers["x-forwarded-host"] || "").split(",")[0].trim() ||
+        req.headers.host
+      : "http://localhost:3000";
+  //const origin = envOrigin || `${proto}://${host}`;
+
+  const cookie = req.headers.cookie || "";
+
+  // 1) Load the position by public id (needs user cookie)
+  const posEndpoint = `${origin}/api/v1/asset_positions/${encodeURIComponent(id)}`;
+  const posResp = await apiGet(posEndpoint, cookie);
+  if (posResp.unauthorized) {
+    return {
+      redirect: { destination: "/login", permanent: false },
+    };
+  }
+  if (posResp.error || !posResp.data) {
+    // Don’t break the page; just skip SSR price
+    res.setHeader("Cache-Control", "private, no-store");
+    return { props: { ssrMarket: null, ssrAt: null } };
+  }
+  const position = posResp.data;
+
+  // 2) Load the asset
+  const assetsEndpoint = `${origin}/api/v1/assets/${encodeURIComponent(position.asset_id)}`;
+  const assetResp = await apiGet(assetsEndpoint, cookie);
+  if (assetResp.error || !assetResp.data) {
+    res.setHeader("Cache-Control", "private, no-store");
+    return { props: { ssrMarket: null, ssrAt: null } };
+  }
+  const asset = assetResp.data;
+  console.log("asset" + asset);
+
+  // 3) Fetch price from yahoo-finance2 only if yfinance_compatible
+  let ssrMarket = null;
+  let ssrAt = null;
+
+  if (asset?.yfinance_compatible && asset?.code) {
+    try {
+      // Dynamic import ensures it’s server-only and not bundled client-side
+      const yahooFinance = (await import("yahoo-finance2")).default;
+
+      // `quote` is enough for current price; it’s HTTPS (ok for SSL-required prod)
+      const q = await yahooFinance.quote(asset.code);
+
+      // Pick the best available price field
+      const candidates = [
+        q?.regularMarketPrice,
+        q?.postMarketPrice,
+        q?.preMarketPrice,
+        q?.ask,
+        q?.bid,
+      ];
+      console.log("candidates" + candidates);
+      const firstNumeric = candidates.find((v) => Number.isFinite(Number(v)));
+      if (Number.isFinite(Number(firstNumeric))) {
+        ssrMarket = Number(firstNumeric);
+        ssrAt = new Date().toISOString();
+      }
+    } catch (e) {
+      // Fail silently; client-side refresh can still run
+      console.error("SSR yfinance error:", e?.message || e);
+    }
+  }
+
+  // User-specific page; do not cache at the edge/CDN
+  res.setHeader("Cache-Control", "private, no-store");
+
+  return {
+    props: {
+      ssrMarket: ssrMarket ?? null,
+      ssrAt: ssrAt ?? null,
+    },
+  };
+}
+
 /* ---------------- UI bits ---------------- */
 function Stat({ label, value }) {
   return (
@@ -853,10 +948,11 @@ async function safeJson(res) {
     return null;
   }
 }
+/* used in  useEffect > public_assets
 function pickNumber(v) {
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
-}
+}*/
 
 const toNumber = (s) => (s === "" ? NaN : Number(s));
 
