@@ -533,8 +533,11 @@ export default function PositionDetailsPage({
           )}
         </section>
 
-        {/* Metrics (now with editable "Valor Unitário de Mercado" when NOT yfinance) */}
+        {/* Metrics with editable "Valor Unitário de Mercado" when NOT yfinance */}
         <section className="bg-gray-900/60 border border-gray-800 rounded-xl p-4">
+          <div className="text-xs uppercase text-gray-400 mb-2">
+            Minha Posição
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Stat label="Quantidade" value={formatNumber(position?.quantity)} />
             <Stat
@@ -650,6 +653,9 @@ export default function PositionDetailsPage({
 
         {/* New Transaction bar */}
         <section className="bg-gray-900/60 border border-gray-800 rounded-xl p-4">
+          <div className="text-xs uppercase text-gray-400 mb-2">
+            Registrar transação
+          </div>
           <div className="flex flex-wrap gap-2 mb-4">
             {[
               { key: "BUY", label: "Comprar" },
@@ -745,9 +751,14 @@ export default function PositionDetailsPage({
                   className="rounded-lg bg-gray-900 border border-gray-800 p-3"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-xs uppercase tracking-wider text-gray-400">
-                      {labelForType(t.transaction_type_key)}
-                    </span>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-xs uppercase tracking-wider text-gray-400">
+                        {labelForType(t.transaction_type_key)}
+                      </span>
+                      <span className="text-xs text-gray-400">
+                        {new Date(t.occurred_date).toLocaleDateString()}
+                      </span>
+                    </div>
                     <span className="text-xs text-gray-400">
                       {formatMoney(
                         t.unit_price,
