@@ -1,18 +1,19 @@
 // pages/home/index.js
 import { useEffect, useMemo, useState } from "react";
+import { apiGet } from "../../infra/clientController";
 import { useRouter } from "next/router";
 import AppShell from "../../components/layout/AppShell";
 
-export default function HomePage() {
+export default function HomePage({ positionsSSR = [] }) {
   const router = useRouter();
 
   const [user, setUser] = useState(null);
   const [userLoading, setUserLoading] = useState(true);
   const [userErr, setUserErr] = useState("");
 
-  const [positions, setPositions] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState("");
+  const [positions] = useState(positionsSSR);
+  const [loading] = useState(false);
+  const [err] = useState("");
 
   // currencies: code -> {code,name,symbol}
   const [, setCurrencies] = useState([]);
@@ -66,37 +67,6 @@ export default function HomePage() {
           setCurrencies([]);
           setCurrencyMap({});
         }
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  // Fetch asset positions summary
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      try {
-        setLoading(true);
-        const r = await fetch("/api/v1/asset_positions/summary", {
-          credentials: "include",
-        });
-        const data = await r.json().catch(() => null);
-        if (!r.ok) {
-          if (r.status === 404 && active) {
-            setPositions([]);
-          } else {
-            throw new Error(`HTTP ${r.status}`);
-          }
-        } else if (active) {
-          const arr = Array.isArray(data) ? data : data?.data || [];
-          setPositions(arr);
-        }
-      } catch (e) {
-        if (active) setErr("Erro inexperado");
-      } finally {
-        if (active) setLoading(false);
       }
     })();
     return () => {
@@ -252,6 +222,99 @@ export default function HomePage() {
       </div>
     </AppShell>
   );
+}
+
+export async function getServerSideProps(ctx) {
+  const { req, res } = ctx;
+  const origin =
+    process.env.NODE_ENV === "production"
+      ? "https://" +
+          (req.headers["x-forwarded-host"] || "").split(",")[0].trim() ||
+        req.headers.host
+      : "http://localhost:3000";
+
+  const cookie = req.headers.cookie || "";
+
+  // 1) Load the asset positions (needs user cookie)
+  const { data, error, unauthorized } = await apiGet(
+    `${origin}/api/v1/asset_positions/summary`,
+    cookie,
+  );
+
+  if (unauthorized) {
+    return {
+      redirect: { destination: "/login", permanent: false },
+    };
+  }
+  let positions = [];
+  if (!error && data) {
+    positions = Array.isArray(data) ? data : data?.data || [];
+  }
+
+  // 2) For yfinance-compatible positions, fetch live price and update total_market_value ----
+  try {
+    if (positions.length > 0) {
+      const yahooFinance = (await import("yahoo-finance2")).default;
+
+      const yfEligible = positions.filter(
+        (p) =>
+          // summary may already include this flag; if not present, skip gracefully
+          p?.yfinance_compatible &&
+          p?.code &&
+          Number.isFinite(Number(p?.quantity)),
+      );
+
+      // Fetch quotes per unique ticker.
+      // eslint-disable-next-line no-undef
+      const uniqueTickers = [...new Set(yfEligible.map((p) => p.code))];
+      const quoteByTicker = {};
+
+      for (const symbol of uniqueTickers) {
+        try {
+          const q = await yahooFinance.quote(symbol);
+          const priceCandidates = [
+            q?.regularMarketPrice,
+            q?.postMarketPrice,
+            q?.preMarketPrice,
+            q?.ask,
+            q?.bid,
+          ];
+          const price = priceCandidates.find((v) => Number.isFinite(Number(v)));
+          if (Number.isFinite(Number(price))) {
+            quoteByTicker[symbol] = Number(price);
+          }
+        } catch {
+          // quote failure: ignore, we keep API's total_market_value
+        }
+      }
+
+      // Apply updated total_market_value where we have a quote
+      positions = positions.map((p) => {
+        const qty = Number(p?.quantity);
+        const live = quoteByTicker[p?.code];
+        if (
+          p?.yfinance_compatible &&
+          Number.isFinite(qty) &&
+          Number.isFinite(live)
+        ) {
+          const updated = qty * live;
+          return { ...p, total_market_value: updated };
+        }
+        return p; // keep internal API value
+      });
+    }
+  } catch {
+    // Any SSR yfinance failure: keep original values
+  }
+
+  // User-specific + live data: avoid caching
+  res.setHeader("Cache-Control", "private, no-store");
+
+  return {
+    props: {
+      positionsSSR: positions,
+    },
+  };
 }
 
 /* Small table helpers */

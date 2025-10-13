@@ -39,7 +39,7 @@ async function getUserAssetPositionsSummary(user_id) {
       a.name, a.code, a.currency_code,
       p.quantity, p.total_cost,
       a.market_value * p.quantity AS total_market_value,
-      p.yield, p.realized_pnl
+      p.yield, p.realized_pnl, a.yfinance_compatible
     FROM asset_positions p
     JOIN assets a ON a.id = p.asset_id
     WHERE

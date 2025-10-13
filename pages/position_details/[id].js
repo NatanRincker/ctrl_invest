@@ -3,10 +3,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import AppShell from "../../components/layout/AppShell";
 import { apiGet } from "../../infra/clientController";
+import market_data from "model/market_data";
 
 export default function PositionDetailsPage({
   ssrMarket = null,
-  //ssrAt = null,
+  ssrFundamentals = null, // { valuation:[], debt:[], efficiency:[], profitability:[] }
 }) {
   const router = useRouter();
   const { id } = router.query; // public UUID for asset_position
@@ -607,7 +608,7 @@ export default function PositionDetailsPage({
 
           <div className="mt-6">
             <div className="text-xs uppercase text-gray-400 mb-2">
-              Indicadores de Rentabilidade
+              Rentabilidade da Posição
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="bg-gray-900/70 border border-gray-800 rounded-lg p-4">
@@ -650,7 +651,60 @@ export default function PositionDetailsPage({
             </div>
           </div>
         </section>
-
+        {/* Fundamentos (Yahoo Finance) - Expandable */}
+        {Boolean(asset?.yfinance_compatible) && ssrFundamentals && (
+          <section className="bg-gray-900/60 border border-gray-800 rounded-xl p-4">
+            <details className="group">
+              <summary className="cursor-pointer list-none flex items-center justify-between">
+                <span className="text-sm font-medium">
+                  Indicadores Fundamentalistas
+                </span>
+                <span className="text-xs text-gray-400 group-open:rotate-180 transition-transform">
+                  ▾
+                </span>
+              </summary>
+              <div className="mt-4 space-y-6">
+                <FundamentalsGroup
+                  title="Indicadores de Valuation"
+                  items={ssrFundamentals.valuation}
+                  currencyCode={asset?.currency_code}
+                  currencySymbol={currencySymbol}
+                />
+                <FundamentalsGroup
+                  title="Indicadores de Endividamento"
+                  items={ssrFundamentals.debt}
+                  currencyCode={asset?.currency_code}
+                  currencySymbol={currencySymbol}
+                />
+                <FundamentalsGroup
+                  title="Indicadores de Eficiência"
+                  items={ssrFundamentals.efficiency}
+                  currencyCode={asset?.currency_code}
+                  currencySymbol={currencySymbol}
+                />
+                <FundamentalsGroup
+                  title="Indicadores de Rentabilidade"
+                  items={ssrFundamentals.profitability}
+                  currencyCode={asset?.currency_code}
+                  currencySymbol={currencySymbol}
+                />
+                <div className="text-[11px] text-gray-500">
+                  Fonte:
+                  <a
+                    href={`https://finance.yahoo.com/quote/${asset.code}/key-statistics/`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-emerald-400 hover:text-emerald-300 underline underline-offset-2 decoration-emerald-400/60 hover:decoration-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-700/40 rounded-sm"
+                  >
+                    {" Yahoo Finance"}
+                  </a>
+                  . Alguns valores podem ser TTM ou estimativas; onde
+                  indisponível, exibimos “—”.
+                </div>
+              </div>
+            </details>
+          </section>
+        )}
         {/* New Transaction bar */}
         <section className="bg-gray-900/60 border border-gray-800 rounded-xl p-4">
           <div className="text-xs uppercase text-gray-400 mb-2">
@@ -784,22 +838,18 @@ export default function PositionDetailsPage({
 }
 
 export async function getServerSideProps(ctx) {
-  console.log("getServerSideProps");
   const { req, res, params } = ctx;
   const id = params?.id;
   if (!id) {
     return { props: { ssrMarket: null, ssrAt: null } };
   }
 
-  // --- Derive origin that works on both Prod (HTTPS) and Dev (HTTP) ---
-  // Priority: explicit env -> x-forwarded headers -> dev fallback
   const origin =
     process.env.NODE_ENV === "production"
       ? "https://" +
           (req.headers["x-forwarded-host"] || "").split(",")[0].trim() ||
         req.headers.host
       : "http://localhost:3000";
-  //const origin = envOrigin || `${proto}://${host}`;
 
   const cookie = req.headers.cookie || "";
 
@@ -830,43 +880,19 @@ export async function getServerSideProps(ctx) {
 
   // 3) Fetch price from yahoo-finance2 only if yfinance_compatible
   let ssrMarket = null;
-  let ssrAt = null;
+  let ssrFundamentals = null;
 
   if (asset?.yfinance_compatible && asset?.code) {
-    try {
-      // Dynamic import ensures it’s server-only and not bundled client-side
-      const yahooFinance = (await import("yahoo-finance2")).default;
-
-      // `quote` is enough for current price; it’s HTTPS (ok for SSL-required prod)
-      const q = await yahooFinance.quote(asset.code);
-
-      // Pick the best available price field
-      const candidates = [
-        q?.regularMarketPrice,
-        q?.postMarketPrice,
-        q?.preMarketPrice,
-        q?.ask,
-        q?.bid,
-      ];
-      console.log("candidates" + candidates);
-      const firstNumeric = candidates.find((v) => Number.isFinite(Number(v)));
-      if (Number.isFinite(Number(firstNumeric))) {
-        ssrMarket = Number(firstNumeric);
-        ssrAt = new Date().toISOString();
-      }
-    } catch (e) {
-      // Fail silently; client-side refresh can still run
-      console.error("SSR yfinance error:", e?.message || e);
-    }
+    ssrMarket = await market_data.getTickerMarketPrice(asset.code);
+    ssrFundamentals = await market_data.getTickerFundamentals(asset.code);
   }
 
   // User-specific page; do not cache at the edge/CDN
   res.setHeader("Cache-Control", "private, no-store");
-
   return {
     props: {
       ssrMarket: ssrMarket ?? null,
-      ssrAt: ssrAt ?? null,
+      ssrFundamentals: ssrFundamentals ?? null,
     },
   };
 }
@@ -919,6 +945,27 @@ function Help({ title }) {
   );
 }
 
+function FundamentalsGroup({ title, items, currencyCode, currencySymbol }) {
+  return (
+    <div>
+      <div className="text-xs uppercase text-gray-400 mb-2">{title}</div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {items.map((it) => (
+          <div
+            key={it.key}
+            className="bg-gray-900/70 border border-gray-800 rounded-lg p-3 flex items-center justify-between"
+          >
+            <div className="text-xs text-gray-400">{it.label}</div>
+            <div className="text-sm font-semibold">
+              {formatFundValue(it, currencyCode, currencySymbol)}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ---------------- Helpers ---------------- */
 function formatMoney(n, code = "BRL", symbol = "") {
   const num = Number(n);
@@ -945,6 +992,30 @@ function formatNumber(n) {
     num,
   );
 }
+// For Fundamental values
+function formatFundValue(it, currencyCode, currencySymbol) {
+  const v = it?.value;
+  if (v === null || v === undefined || Number.isNaN(v)) return "—";
+  switch (it.fmt) {
+    case "pct":
+      return `${new Intl.NumberFormat("pt-BR", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(v * 100)}%`;
+    case "money":
+      return formatMoney(v, currencyCode, currencySymbol);
+    case "int":
+      return new Intl.NumberFormat("pt-BR", {
+        maximumFractionDigits: 0,
+      }).format(v);
+    default: // "num"
+      return new Intl.NumberFormat("pt-BR", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(v);
+  }
+}
+
 // normalize possible shapes: array | {data: array} | object map
 function normalizeArray(data) {
   if (Array.isArray(data)) return data;
