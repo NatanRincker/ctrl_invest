@@ -652,59 +652,63 @@ export default function PositionDetailsPage({
           </div>
         </section>
         {/* Fundamentos (Yahoo Finance) - Expandable */}
-        {Boolean(asset?.yfinance_compatible) && ssrFundamentals && (
-          <section className="bg-gray-900/60 border border-gray-800 rounded-xl p-4">
-            <details className="group">
-              <summary className="cursor-pointer list-none flex items-center justify-between">
-                <span className="text-sm font-medium">
-                  Indicadores Fundamentalistas
-                </span>
-                <span className="text-xs text-gray-400 group-open:rotate-180 transition-transform">
-                  ▾
-                </span>
-              </summary>
-              <div className="mt-4 space-y-6">
-                <FundamentalsGroup
-                  title="Indicadores de Valuation"
-                  items={ssrFundamentals.valuation}
-                  currencyCode={asset?.currency_code}
-                  currencySymbol={currencySymbol}
-                />
-                <FundamentalsGroup
-                  title="Indicadores de Endividamento"
-                  items={ssrFundamentals.debt}
-                  currencyCode={asset?.currency_code}
-                  currencySymbol={currencySymbol}
-                />
-                <FundamentalsGroup
-                  title="Indicadores de Eficiência"
-                  items={ssrFundamentals.efficiency}
-                  currencyCode={asset?.currency_code}
-                  currencySymbol={currencySymbol}
-                />
-                <FundamentalsGroup
-                  title="Indicadores de Rentabilidade"
-                  items={ssrFundamentals.profitability}
-                  currencyCode={asset?.currency_code}
-                  currencySymbol={currencySymbol}
-                />
-                <div className="text-[11px] text-gray-500">
-                  Fonte:
-                  <a
-                    href={`https://finance.yahoo.com/quote/${asset.code}/key-statistics/`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-emerald-400 hover:text-emerald-300 underline underline-offset-2 decoration-emerald-400/60 hover:decoration-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-700/40 rounded-sm"
-                  >
-                    {" Yahoo Finance"}
-                  </a>
-                  . Alguns valores podem ser TTM ou estimativas; onde
-                  indisponível, exibimos “—”.
+        {Boolean(asset?.yfinance_compatible) &&
+          ssrFundamentals &&
+          (asset.asset_type_code === "ACAO" ||
+            asset.asset_type_code === "STOCK" ||
+            asset.asset_type_code === "BDR") && (
+            <section className="bg-gray-900/60 border border-gray-800 rounded-xl p-4">
+              <details className="group">
+                <summary className="cursor-pointer list-none flex items-center justify-between">
+                  <span className="text-sm font-medium">
+                    Indicadores Fundamentalistas
+                  </span>
+                  <span className="text-xs text-gray-400 group-open:rotate-180 transition-transform">
+                    ▾
+                  </span>
+                </summary>
+                <div className="mt-4 space-y-6">
+                  <FundamentalsGroup
+                    title="Indicadores de Valuation"
+                    items={ssrFundamentals.valuation}
+                    currencyCode={asset?.currency_code}
+                    currencySymbol={currencySymbol}
+                  />
+                  <FundamentalsGroup
+                    title="Indicadores de Endividamento"
+                    items={ssrFundamentals.debt}
+                    currencyCode={asset?.currency_code}
+                    currencySymbol={currencySymbol}
+                  />
+                  <FundamentalsGroup
+                    title="Indicadores de Eficiência"
+                    items={ssrFundamentals.efficiency}
+                    currencyCode={asset?.currency_code}
+                    currencySymbol={currencySymbol}
+                  />
+                  <FundamentalsGroup
+                    title="Indicadores de Rentabilidade"
+                    items={ssrFundamentals.profitability}
+                    currencyCode={asset?.currency_code}
+                    currencySymbol={currencySymbol}
+                  />
+                  <div className="text-[11px] text-gray-500">
+                    Fonte:
+                    <a
+                      href={`https://finance.yahoo.com/quote/${asset.code}/key-statistics/`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-emerald-400 hover:text-emerald-300 underline underline-offset-2 decoration-emerald-400/60 hover:decoration-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-700/40 rounded-sm"
+                    >
+                      {" Yahoo Finance"}
+                    </a>
+                    . Alguns valores podem ser TTM ou estimativas; onde
+                    indisponível, exibimos “—”.
+                  </div>
                 </div>
-              </div>
-            </details>
-          </section>
-        )}
+              </details>
+            </section>
+          )}
         {/* New Transaction bar */}
         <section className="bg-gray-900/60 border border-gray-800 rounded-xl p-4">
           <div className="text-xs uppercase text-gray-400 mb-2">
