@@ -9,7 +9,11 @@ const DonutChart = dynamic(() => import("../../components/charts/DonutChart"), {
   ssr: false,
 });
 
-export default function HomePage({ positionsSSR = [], assetTypesSSR = [] }) {
+export default function HomePage({
+  positionsSSR = [],
+  assetTypesSSR = [],
+  economyDataSSR = {},
+}) {
   const router = useRouter();
 
   const [user, setUser] = useState(null);
@@ -100,16 +104,35 @@ export default function HomePage({ positionsSSR = [], assetTypesSSR = [] }) {
   // Totals by Asset Type (for donut). We use market value + yield + realized_pnl
   // and display as PERCENTAGE to avoid cross-currency mixing on the chart.
   const totalsByAssetType = useMemo(() => {
+    // Returns the FX rate to convert a currency to BRL.
+    // Looks for a dynamic key like "usd_to_brl", "eur_to_brl", etc.
+    const getRateToBRL = (ccy) => {
+      if (!ccy) return 1;
+      const key = `${String(ccy).toLowerCase()}_to_brl`;
+      const v = Number(economyDataSSR?.[key]);
+      if (Number.isFinite(v) && v > 0) return v;
+      // Fallbacks
+      if (ccy === "BRL") return 1;
+      if (
+        ccy === "USD" &&
+        Number.isFinite(Number(economyDataSSR?.usd_to_brl))
+      ) {
+        return Number(economyDataSSR.usd_to_brl);
+      }
+      return 1; // unknown currency → assume BRL to avoid breaking the chart
+    };
     const m = {};
     for (const p of positions) {
       const k = p.asset_type_code || "OUTROS";
       const p_mkt_val = toNumber(p.total_market_value);
       const roi = toNumber(p.yield);
       const rlzd_pnl = toNumber(p.realized_pnl);
-      m[k] = (m[k] || 0) + (p_mkt_val + roi + rlzd_pnl);
+      const localTotal = p_mkt_val + roi + rlzd_pnl;
+      const inBRL = localTotal * getRateToBRL(p.currency_code);
+      m[k] = (m[k] || 0) + inBRL;
     }
     return m; // { "STOCK": 123, "ETF": 456, ... }
-  }, [positions]);
+  }, [positions, economyDataSSR]);
   const donutData = useMemo(() => {
     const entries = Object.entries(totalsByAssetType)
       .map(([code, value]) => ({
@@ -129,33 +152,9 @@ export default function HomePage({ positionsSSR = [], assetTypesSSR = [] }) {
     >
       {/* Dashboard: Totals by Currency (cards) + Donut by Asset Type */}
       <section className="mb-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Currency totals as squares */}
-          <div className="lg:col-span-2">
-            <div className="text-xs uppercase tracking-wider text-gray-400 mb-2">
-              Valor do Portfólio por Moeda
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
-              {Object.keys(totalsByCurrency).length === 0 ? (
-                <div className="text-sm text-gray-400">Sem valores</div>
-              ) : (
-                Object.entries(totalsByCurrency).map(([code, amount]) => (
-                  <div
-                    key={code}
-                    className="rounded-xl bg-gray-900/70 border border-gray-800 p-4 flex flex-col items-center justify-center"
-                  >
-                    <div className="text-xs text-gray-400 mb-1">{code}</div>
-                    <div className="text-2xl font-bold text-gray-100 text-center">
-                      {formatCurrency(amount, code, currencyMap[code])}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
+        <div className="grid grid-cols-1 lg:grid-cols-10 gap-4">
           {/* Donut - share by Asset Type (percent) */}
-          <div className="">
+          <div className="lg:col-span-4">
             <div className="text-xs uppercase tracking-wider text-gray-400 mb-2">
               Distribuição por Tipo de Ativo
             </div>
@@ -182,6 +181,55 @@ export default function HomePage({ positionsSSR = [], assetTypesSSR = [] }) {
                 />
               </div>
             )}
+          </div>
+          {/* Right rail: group Currency totals + Economy data together */}
+          <div className="lg:col-span-6">
+            <div className="flex flex-row flex-wrap items-start gap-4">
+              {/* Currency totals */}
+              <div className="shrink-0">
+                <div className="text-xs uppercase tracking-wider text-gray-400 mb-2">
+                  Valor do Portfólio por Moeda
+                </div>
+                <div className="grid grid-flow-col grid-rows-2 auto-cols-[14rem] gap-3 overflow-x-auto pb-2">
+                  {Object.keys(totalsByCurrency).length === 0 ? (
+                    <div className="text-sm text-gray-400">Sem valores</div>
+                  ) : (
+                    Object.entries(totalsByCurrency).map(([code, amount]) => (
+                      <div
+                        key={code}
+                        className="w-[14rem] rounded-xl bg-gray-900/70 border border-gray-800 p-4 flex flex-col items-center justify-center"
+                      >
+                        <div className="text-xs text-gray-400 mb-1">{code}</div>
+                        <div className="text-2xl font-bold text-gray-100 text-center">
+                          {formatCurrency(amount, code, currencyMap[code])}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Economy data */}
+              <div className="shrink-0">
+                <div className="text-xs uppercase tracking-wider text-gray-400 mb-2">
+                  Indicadores Econômicos
+                </div>
+                <div className="grid grid-flow-col grid-rows-2 auto-cols-[14rem] gap-3 overflow-x-auto pb-2">
+                  <div className="w-[14rem] rounded-xl bg-gray-900/70 border border-gray-800 p-4 flex flex-col items-center justify-center">
+                    <div className="text-xs text-gray-400 mb-1">Dólar Hoje</div>
+                    <div className="text-2xl font-bold text-gray-100 text-center">
+                      {formatCurrency(economyDataSSR?.usd_to_brl, "BRL", "R$")}
+                    </div>
+                  </div>
+                  <div className="w-[14rem] rounded-xl bg-gray-900/70 border border-gray-800 p-4 flex flex-col items-center justify-center">
+                    <div className="text-xs text-gray-400 mb-1">Taxa SELIC</div>
+                    <div className="text-2xl font-bold text-gray-100 text-center">
+                      {`${economyDataSSR?.brazil_selic_rate}% a.a`}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -367,6 +415,11 @@ export async function getServerSideProps(ctx) {
     assetTypes = normalizeArray(assetTypesRes.data);
   }
 
+  const economyData = {
+    usd_to_brl: await market_data.getTickerMarketPrice("BRL=x"),
+    brazil_selic_rate: await market_data.getAnualizedSelicRate(),
+  };
+
   // User-specific + live data: avoid caching
   res.setHeader("Cache-Control", "private, no-store");
 
@@ -374,6 +427,7 @@ export async function getServerSideProps(ctx) {
     props: {
       positionsSSR: positions,
       assetTypesSSR: assetTypes,
+      economyDataSSR: economyData,
     },
   };
 }

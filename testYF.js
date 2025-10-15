@@ -1,43 +1,42 @@
-import YahooFinance from "yahoo-finance2";
+const res = await getAnualizedSelicRate();
 
-async function getGlobalMacroNews(count = 10, lang = "en-US", region = "US") {
-  // Broad macro queries; merge & de-dupe by UUID
-  const queries = ["global economy", "world economy", "macro outlook"];
-  const all = await Promise.all(
-    queries.map((q) =>
-      YahooFinance.search(q, {
-        quotesCount: 0,
-        newsCount: count,
-        lang,
-        region,
-      }),
-    ),
-  );
+console.log(res);
 
-  const seen = new Set();
-  const merged = [];
-  for (const r of all) {
-    for (const a of r.news ?? []) {
-      if (a.uuid && !seen.has(a.uuid)) {
-        seen.add(a.uuid);
-        merged.push(a);
-      }
-    }
+async function getAnualizedSelicRate() {
+  // One Day Delay becuse
+  // Reason: API does not specify the exact time of the day this gets updated
+  function getPrevDay() {
+    // local time zone limited
+    const d = new Date();
+    d.setDate(d.getDate() - 1); // handles month/year rollovers
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const yyyy = d.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
   }
+  const yesterday = getPrevDay();
+  const bcb_api_url = `https://api.bcb.gov.br/dados/serie/bcdata.sgs.1178/dados?formato=json&dataInicial=${yesterday}&dataFinal=${yesterday}`;
+  console.log(bcb_api_url);
 
-  // Sort by recency; take top N
-  merged.sort(
-    (a, b) => (b.providerPublishTime ?? 0) - (a.providerPublishTime ?? 0),
-  );
-  return merged.slice(0, count).map((a) => ({
-    id: a.uuid,
-    title: a.title,
-    url: a.link,
-    publisher: a.publisher,
-    publishedAt: new Date((a.providerPublishTime ?? 0) * 1000).toISOString(),
-    tickers: a.relatedTickers ?? [],
-  }));
+  const res = await fetch(bcb_api_url);
+  if (!res.ok) {
+    return { error: `HTTP ${res.status}` };
+  }
+  try {
+    const selic_data = await res.json();
+    // BCB API returns "Taxa Selic", but we want to show to the user the
+    // publicly known rate which is actually the "Meta Selic" which is always
+    // <Taxa Selic> + 0.1
+    // See: https://www.bcb.gov.br/controleinflacao/historicotaxasjuros
+    const selic_rate = num(selic_data[0].valor) + 0.1;
+    return selic_rate;
+  } catch (e) {
+    //exception handling here
+    console.error(e);
+  }
 }
-const results = await getGlobalMacroNews();
 
-console.log(results);
+function num(x) {
+  const n = Number(x);
+  return Number.isFinite(n) ? n : null;
+}
