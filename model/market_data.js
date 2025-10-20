@@ -167,16 +167,23 @@ async function getYFQuoteSummary(tickerName) {
 async function getAnualizedSelicRate() {
   // One Day Delay becuse
   // Reason: API does not specify the exact time of the day this gets updated
-  function getPrevDay() {
-    // local time zone limited
-    const d = new Date();
-    d.setDate(d.getDate() - 1); // handles month/year rollovers
+  function getPrevBusinessDay() {
+    // local time zone
+    const today = new Date();
+    const dow = today.getDay(); // Sun = 0, Mon = 1
+
+    // Set offset to go back  to reach Friday if Sunday or monday;
+    const offset = dow === 0 ? 2 : dow === 1 ? 3 : 1;
+
+    const d = new Date(today);
+    d.setDate(d.getDate() - offset); // handles month/year rollovers
+
     const dd = String(d.getDate()).padStart(2, "0");
     const mm = String(d.getMonth() + 1).padStart(2, "0");
     const yyyy = d.getFullYear();
     return `${dd}/${mm}/${yyyy}`;
   }
-  const yesterday = getPrevDay();
+  const yesterday = getPrevBusinessDay();
   const bcb_api_url = `https://api.bcb.gov.br/dados/serie/bcdata.sgs.1178/dados?formato=json&dataInicial=${yesterday}&dataFinal=${yesterday}`;
   console.log(bcb_api_url);
 
