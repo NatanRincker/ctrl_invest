@@ -196,20 +196,17 @@ function computeAssetPosition(position, transaction) {
     let updatedQuantity;
     let updatedTotalCost;
     let updatedRealizedPnL = new Decimal(position.realized_pnl);
+    let updatedAvgCost = new Decimal(position.avg_cost);
     if (transaction.transaction_type_key === "BUY") {
       updatedQuantity = positionQuantity.add(transactionQuantity);
       updatedTotalCost = positionTotalCost.add(transactionTotalAmount);
+      updatedAvgCost = updatedTotalCost.div(updatedQuantity);
     } else if (transaction.transaction_type_key === "SELL") {
       updatedQuantity = positionQuantity.minus(transactionQuantity);
-      updatedTotalCost = positionTotalCost.minus(transactionTotalAmount);
 
       const delta = new Decimal(transactionUnitPrice.minus(positionAvgCost));
       updatedRealizedPnL = delta.times(transactionQuantity);
     }
-
-    const updatedAvgCost = updatedQuantity.equals(0)
-      ? 0
-      : updatedTotalCost.div(updatedQuantity);
 
     return {
       ...position,
