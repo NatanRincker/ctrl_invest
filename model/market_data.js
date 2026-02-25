@@ -1,3 +1,4 @@
+import YahooFinance from "yahoo-finance2";
 async function getTickerMarketPrice(tickerName) {
   return getYFQuote(tickerName);
 }
@@ -5,10 +6,10 @@ async function getTickerMarketPrice(tickerName) {
 async function getYFQuote(tickerName) {
   try {
     // Dynamic import ensures it’s server-only and not bundled client-side
-    const yahooFinance = (await import("yahoo-finance2")).default;
+    const yf = new YahooFinance();
 
     // `quote` is enough for current price; it’s HTTPS (ok for SSL-required prod)
-    const q = await yahooFinance.quote(tickerName);
+    const q = await yf.quote(tickerName);
 
     // Pick the best available price field
     const candidates = [
