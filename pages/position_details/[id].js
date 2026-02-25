@@ -544,7 +544,7 @@ export default function PositionDetailsPage({
             <Stat
               label="Custo Unitário"
               value={formatMoney(
-                toNumber(position?.total_cost) / toNumber(position?.quantity),
+                toNumber(position?.avg_cost),
                 asset?.currency_code,
                 currencySymbol,
               )}
