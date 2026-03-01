@@ -1,42 +1,29 @@
-const res = await getAnualizedSelicRate();
+import YahooFinance from "yahoo-finance2";
 
-console.log(res);
-
-async function getAnualizedSelicRate() {
-  // One Day Delay becuse
-  // Reason: API does not specify the exact time of the day this gets updated
-  function getPrevDay() {
-    // local time zone limited
-    const d = new Date();
-    d.setDate(d.getDate() - 1); // handles month/year rollovers
-    const dd = String(d.getDate()).padStart(2, "0");
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const yyyy = d.getFullYear();
-    return `${dd}/${mm}/${yyyy}`;
-  }
-  const yesterday = getPrevDay();
-  const bcb_api_url = `https://api.bcb.gov.br/dados/serie/bcdata.sgs.1178/dados?formato=json&dataInicial=${yesterday}&dataFinal=${yesterday}`;
-  console.log(bcb_api_url);
-
-  const res = await fetch(bcb_api_url);
-  if (!res.ok) {
-    return { error: `HTTP ${res.status}` };
-  }
+async function getYFQuote(tickerName) {
   try {
-    const selic_data = await res.json();
-    // BCB API returns "Taxa Selic", but we want to show to the user the
-    // publicly known rate which is actually the "Meta Selic" which is always
-    // <Taxa Selic> + 0.1
-    // See: https://www.bcb.gov.br/controleinflacao/historicotaxasjuros
-    const selic_rate = num(selic_data[0].valor) + 0.1;
-    return selic_rate;
+    // Dynamic import ensures it’s server-only and not bundled client-side
+    //const yahooFinance = await require("yahoo-finance2").default;
+    const yf = new YahooFinance();
+
+    // `quote` is enough for current price; it’s HTTPS (ok for SSL-required prod)
+    const q = await yf.quote(tickerName);
+
+    // Pick the best available price field
+    const candidates = [
+      q?.regularMarketPrice,
+      q?.postMarketPrice,
+      q?.preMarketPrice,
+      q?.ask,
+      q?.bid,
+    ];
+    const firstNumeric = candidates.find((v) => Number.isFinite(Number(v)));
+    if (Number.isFinite(Number(firstNumeric))) {
+      return Number(firstNumeric);
+    }
   } catch (e) {
-    //exception handling here
-    console.error(e);
+    console.error("SSR yahoo-finance2 error:", e?.message || e);
   }
 }
 
-function num(x) {
-  const n = Number(x);
-  return Number.isFinite(n) ? n : null;
-}
+console.log(await getYFQuote("AAPL"));
