@@ -112,6 +112,11 @@ async function update(transactionData) {
       updateInputValues.occurred_date,
     ],
   });
+  const transaction_list = await findAssetTransactions(
+    updateInputValues.asset_id,
+    updateInputValues.user_id,
+  );
+  await asset_position.recalculate(transaction_list);
   return result.rows[0];
 }
 
@@ -130,6 +135,11 @@ async function deleteUserTransaction(transaction_id, user_id) {
           RETURNING *;`,
       values: [transaction_id],
     });
+    const transaction_list = await findAssetTransactions(
+      transactionToDelete.asset_id,
+      transactionToDelete.user_id,
+    );
+    await asset_position.recalculate(transaction_list);
     return result.rows[0];
   } else {
     throw new UnauthorizedError({
