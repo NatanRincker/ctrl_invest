@@ -143,10 +143,10 @@ async function updateAssetPosition(position, transaction) {
   console.log(updatedInputValues);
 
   return runUpdateQuery(updatedInputValues);
-
-  async function runUpdateQuery(updatedInputValues) {
-    const result = await database.query({
-      text: `
+}
+async function runUpdateQuery(updatedInputValues) {
+  const result = await database.query({
+    text: `
     UPDATE
       asset_positions
     SET
@@ -163,19 +163,18 @@ async function updateAssetPosition(position, transaction) {
     RETURNING
       *
     ;`,
-      values: [
-        updatedInputValues.id,
-        updatedInputValues.user_id,
-        updatedInputValues.asset_id,
-        updatedInputValues.quantity,
-        updatedInputValues.total_cost,
-        updatedInputValues.avg_cost,
-        updatedInputValues.realized_pnl,
-        updatedInputValues.yield,
-      ],
-    });
-    return result.rows[0];
-  }
+    values: [
+      updatedInputValues.id,
+      updatedInputValues.user_id,
+      updatedInputValues.asset_id,
+      updatedInputValues.quantity,
+      updatedInputValues.total_cost,
+      updatedInputValues.avg_cost,
+      updatedInputValues.realized_pnl,
+      updatedInputValues.yield,
+    ],
+  });
+  return result.rows[0];
 }
 
 function computeAssetPosition(position, transaction) {
@@ -207,11 +206,13 @@ function computeAssetPosition(position, transaction) {
       updatedAvgCost = updatedTotalCost.div(updatedQuantity);
     } else if (transaction.transaction_type_key === "SELL") {
       updatedQuantity = positionQuantity.minus(transactionQuantity);
-      console.log("------- updatedQuantity -------");
-      console.log(updatedQuantity.toString());
+      updatedTotalCost = updatedQuantity.times(updatedAvgCost);
 
-      const delta = new Decimal(transactionUnitPrice.minus(positionAvgCost));
-      updatedRealizedPnL = delta.times(transactionQuantity);
+      const unitDelta = new Decimal(
+        transactionUnitPrice.minus(positionAvgCost),
+      );
+      const delta = unitDelta.times(transactionQuantity);
+      updatedRealizedPnL = updatedRealizedPnL.add(delta);
     }
 
     return {
@@ -247,11 +248,52 @@ function computeAssetPosition(position, transaction) {
   }
 }
 
+async function recalculate(transaction_list) {
+  // 0. Ensure the transaction list is not empty and only then proceed with the recalculation
+  // 0.1 If the transaction list is empty an error should be returned
+  if (!transaction_list || transaction_list.length === 0) {
+    throw new Error(
+      "Transaction list cannot be empty for recalculation. No transactions to process.",
+    );
+  }
+  // 1. reset/update asset_position
+  // 1.1 sort transactions so they can execute in order of occurence
+  const sortedTransactions = [...transaction_list].sort(
+    (a, b) => new Date(a.occurred_date) - new Date(b.occurred_date),
+  );
+  // 1.2 get current asset_position object
+  // 1.3 assign zero values to asset_position properties (except from id)
+  const { asset_id, user_id } = sortedTransactions[0];
+  const currentPosition = await findAssetPosition(asset_id, user_id);
+  if (currentPosition) {
+    const zeroedPosition = {
+      ...currentPosition,
+      quantity: "0",
+      total_cost: "0",
+      avg_cost: "0",
+      realized_pnl: "0",
+      yield: "0",
+    };
+
+    // Save the zeroed state to the database before we start replaying transactions
+    await runUpdateQuery(zeroedPosition);
+  } else {
+    throw new Error(
+      "Unable to locate asset_position based on asset_id and user_id.",
+    );
+  }
+  // 2. run each transaction in transaction_list in creation order as a new transaction using handleNewTransaction()
+  for (const transaction of sortedTransactions) {
+    await handleNewTransaction(transaction);
+  }
+}
+
 const asset_position = {
   handleNewTransaction,
   getUserAssetPositions,
   getUserAssetPositionsSummary,
   findUserAssetPositionById,
+  recalculate,
 };
 
 export default asset_position;
